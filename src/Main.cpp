@@ -19,6 +19,7 @@ static int on_receive(void* socket_ptr) {
     char message[message_length];
     int received;
 
+    // https://www.geeksforgeeks.org/cpp/strtok-strtok_r-functions-c-examples/
     // TODO: while(), rather than do
     do {
         received = SDLNet_TCP_Recv(socket, message, message_length);
