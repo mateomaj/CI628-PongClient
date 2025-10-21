@@ -124,6 +124,8 @@ void loop(SDL_Renderer* renderer) {
             }
 
             if (event.type == SDL_QUIT) {
+                game->send("DISCONNECT");
+                SDL_Delay(100);
                 is_running = false;
             }
         }
@@ -209,7 +211,7 @@ int main(int argc, char** argv) {
     SDL_Delay(5000);
     // Shutdown SDL_net
     SDLNet_Quit();
-
+    //printf("EXITING THE SYSTEMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM");
     // Shutdown SDL
     SDL_Quit();
 
