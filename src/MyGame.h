@@ -17,7 +17,7 @@ static struct GameData {
 class MyGame {
 
     private:
-        SDL_Rect player1 = { 0, 0, 20, 60 };
+        SDL_Rect player1 = { 200, 0, 20, 60 };
         SDL_Rect player2 = { 600, 0, 20, 60 }; // New - Player 2
         SDL_Rect ball = { 0, 0, 20, 20 }; // New - Ball
     public:

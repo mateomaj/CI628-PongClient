@@ -19,29 +19,54 @@ static int on_receive(void* socket_ptr) {
     char message[message_length];
     int received;
 
-    // https://www.geeksforgeeks.org/cpp/strtok-strtok_r-functions-c-examples/
+    // New - Nested strtok to deal with combined messages
+    // Quickly doing multiple broadcast calls on server makes the client recieve two sets of data as one message. This fix uses a semi-colon to separate messages in case they get combined so the data can be fully processed.
+    // Made with the help of: https://www.geeksforgeeks.org/cpp/strtok-strtok_r-functions-c-examples/
     // TODO: while(), rather than do
     do {
         received = SDLNet_TCP_Recv(socket, message, message_length);
         message[received] = '\0';
 
-        char* pch = strtok(message, ",");
+        // The things we have to do without string.split() 
 
-        // get the command, which is the first string in the message
-        string cmd(pch);
+        //printf(message);
+        //cout << endl;
 
-        // then get the arguments to the command
-        vector<string> args;
+        string cmd = "";
 
-        while (pch != NULL) {
-            pch = strtok(NULL, ",");
+        char* outer_saveptr = NULL;
+        char* inner_saveptr = NULL;
 
-            if (pch != NULL) {
-                args.push_back(string(pch));
+        char* token = strtok_s(message, ";", &outer_saveptr);
+
+        while (token != NULL) {
+            //char* pch = strtok(message, ",");
+            char* pch = strtok_s(token, ",", &inner_saveptr);
+
+            // get the command, which is the first string in the message
+            cmd = string(pch);
+            //string cmd(pch);
+
+            // then get the arguments to the command
+            vector<string> args;
+
+            while (pch != NULL) {
+                //pch = strtok(NULL, ",");
+                pch = strtok_s(NULL, ",", &inner_saveptr);
+
+                if (pch != NULL) {
+                    args.push_back(string(pch));
+                }
             }
-        }
 
-        game->on_receive(cmd, args);
+            game->on_receive(cmd, args);
+
+            if (cmd == "exit") {
+                break;
+            }
+
+            token = strtok_s(NULL, ";", &outer_saveptr);
+        }
 
         if (cmd == "exit") {
             break;
