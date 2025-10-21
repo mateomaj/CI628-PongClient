@@ -19,6 +19,7 @@ static int on_receive(void* socket_ptr) {
     char message[message_length];
     int received;
 
+    //cout << received << endl;
     // New - Nested strtok to deal with combined messages
     // Quickly doing multiple broadcast calls on server makes the client recieve two sets of data as one message. This fix uses a semi-colon to separate messages in case they get combined so the data can be fully processed.
     // Made with the help of: https://www.geeksforgeeks.org/cpp/strtok-strtok_r-functions-c-examples/
@@ -112,6 +113,8 @@ void loop(SDL_Renderer* renderer) {
 
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
+                        game->send("DISCONNECT");
+                        SDL_Delay(100);
                         is_running = false;
                         break;
 
@@ -184,7 +187,8 @@ int main(int argc, char** argv) {
         printf("SDLNet_ResolveHost: %s\n", SDLNet_GetError());
         exit(3);
     }
-
+    //cout << ip.host << endl;
+    //cout << ip.port << endl;
     // Open the connection to the server
     TCPsocket socket = SDLNet_TCP_Open(&ip);
 
@@ -202,7 +206,7 @@ int main(int argc, char** argv) {
 
     // Close connection to the server
     SDLNet_TCP_Close(socket);
-
+    SDL_Delay(5000);
     // Shutdown SDL_net
     SDLNet_Quit();
 
