@@ -33,6 +33,13 @@ void MyGame::input(SDL_Event& event) {
         case SDLK_d:
             send(event.type == SDL_KEYDOWN ? "D_DOWN" : "D_UP");
             break;
+        case SDLK_SPACE:
+            send(event.type == SDL_KEYDOWN ? "SPACE_DOWN" : "SPACE_UP");
+            break;
+        case SDLK_LSHIFT:
+        case SDLK_RSHIFT:
+            send(event.type == SDL_KEYDOWN ? "SHIFT_DOWN" : "SHIFT_UP");
+            break;
         case SDLK_UP:
             send(event.type == SDL_KEYDOWN ? "I_DOWN" : "I_UP"); // Player 2 has I,K movement in the server script
             break;
