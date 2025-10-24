@@ -40,6 +40,9 @@ void MyGame::input(SDL_Event& event) {
         case SDLK_RSHIFT:
             send(event.type == SDL_KEYDOWN ? "SHIFT_DOWN" : "SHIFT_UP");
             break;
+        case SDLK_h:
+            send(event.type == SDL_KEYDOWN ? "H_DOWN" : "H_UP");
+            break;
         case SDLK_UP:
             send(event.type == SDL_KEYDOWN ? "I_DOWN" : "I_UP"); // Player 2 has I,K movement in the server script
             break;
