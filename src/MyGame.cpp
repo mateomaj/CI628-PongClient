@@ -20,6 +20,73 @@ void MyGame::send(std::string message) {
 }
 
 void MyGame::input(SDL_Event& event) {
+    //std::cout << SDL_GetKeyName(event.key.keysym.sym) << std::endl;
+    //std::cout << "I hate you: " << (int) (char) event.key.keysym.sym << std::endl;
+
+    // Updated key switch with a default for generic keys (a-z, 0-9, etc) because making a new case for each one is painful and inefficient
+    switch (event.key.keysym.sym) {
+        
+        //case SDLK_UP: // Turns out these match up in SDL_GetKeyName()
+            //send(event.type == SDL_KEYDOWN ? "UP_DOWN" : "UP_UP");
+            //break;
+        //case SDLK_DOWN:
+            //send(event.type == SDL_KEYDOWN ? "DOWN_DOWN" : "DOWN_UP");
+            //break;
+        //case SDLK_LEFT:
+            //send(event.type == SDL_KEYDOWN ? "LEFT_DOWN" : "LEFT_UP");
+            //break;
+        //case SDLK_RIGHT:
+            //send(event.type == SDL_KEYDOWN ? "RIGHT_DOWN" : "RIGHT_UP");
+            //break;
+        //case SDLK_SPACE:
+            //send(event.type == SDL_KEYDOWN ? "SPACE_DOWN" : "SPACE_UP");
+            //break;
+        case SDLK_LSHIFT: // Like explained serverside, JavaFX doesn't separate modifier keys for left and right, so here those keys will be sent as the same key
+        case SDLK_RSHIFT: // Note - The key names are case sensitive
+            send(event.type == SDL_KEYDOWN ? "Shift_DOWN" : "Shift_UP");
+            break;
+        case SDLK_LCTRL:
+        case SDLK_RCTRL:
+            send(event.type == SDL_KEYDOWN ? "Ctrl_DOWN" : "Ctrl_UP");
+            break;
+        case SDLK_LALT:
+        case SDLK_RALT:
+            send(event.type == SDL_KEYDOWN ? "Alt_DOWN" : "Alt_UP");
+            break;
+        case SDLK_ESCAPE: // Ignore escape input as using it to close the program takes priority
+            break;
+        default:
+            //char kms[1] = { (char)event.key.keysym.sym };
+            //std::cout << (char)event.key.keysym.sym << "_Down" << std::endl;
+            //std::cout << kms + "_Down" << std::endl;
+            //strcat(kms, "_Down");
+            //std::cout << kms << std::endl; // Prints - d[redacted]d_Down // WHAT THE FUCK IS THIS, I HATE THIS CLOWN ASS LANGUAGE! I JUST WANT TO ADD A FUCKING CHARACTER TO A FUCKING STRING, WHY IS IT SO DIFFICULT??? // (I couldn't paste the whole thing in but it's "d" a billion U+2560 "d_Down")
+            //std::cout << std::strcat((char*)event.key.keysym.sym, "_Down") << std::endl;
+
+            //char kys[100] = { (char)event.key.keysym.sym };
+            //char kms[999] = "_Down";
+            //strcat(kys, kms); // Works, I hate this thing
+            //std::cout << kys << std::endl;
+
+            //std::cout << std::string(SDL_GetKeyName(event.key.keysym.sym)).append("_Down") << std::endl;
+           
+            //send(event.type == SDL_KEYDOWN ? ((char)event.key.keysym.sym) + "_DOWN" : ((char)event.key.keysym.sym)+ "_UP");
+
+            //send(std::string(SDL_GetKeyName(event.key.keysym.sym)).append(event.type == SDL_KEYDOWN ? "_DOWN" : "_UP").c_str()); // FINALLY
+
+
+
+            // C++ and JavaFX don't use the same names for key references. Inputs like escape, keypad #, +, etc don't match up with how they're defined in FX's KeyCode enum.
+            // SDL_GetKeyName() results match up with most of the main keys that you might need, but there are still some that need to be defined manually to fully work on serverside.
+            // At least this approach is better than defining every key manually, now custom input binds are more or less possible
+
+            //https://stackoverflow.com/questions/26990270/printing-name-of-a-key-in-sdl - Helped me find the function for getting key names
+            send(std::string(SDL_GetKeyName(event.key.keysym.sym)).append(event.type == SDL_KEYDOWN ? "_DOWN" : "_UP")); // FINALLY
+            break;
+    }
+
+    // Old input switch
+    /*
     switch (event.key.keysym.sym) {
         case SDLK_w:
             send(event.type == SDL_KEYDOWN ? "W_DOWN" : "W_UP");
@@ -56,6 +123,7 @@ void MyGame::input(SDL_Event& event) {
             send(event.type == SDL_KEYDOWN ? "K_DOWN" : "K_UP");
             break;
     }
+    */
 }
 
 void MyGame::update() {
