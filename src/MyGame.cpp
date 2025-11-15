@@ -4,11 +4,44 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
     //std::cout << cmd << std::endl;
     if (cmd == "GAME_DATA") {
         // we should have exactly 4 arguments
+        /*
         if (args.size() == 4) {
             game_data.player1Y = stoi(args.at(0));
             game_data.player2Y = stoi(args.at(1));
             game_data.ballX = stoi(args.at(2));
             game_data.ballY = stoi(args.at(3));
+        }
+        */
+    } else if (cmd == "PLAYER_DATA") {
+        if (args.size() == 3) {
+            int id = stoi(args.at(0));
+            game_data.playerMap[id]->setPos(stoi(args.at(1)), stoi(args.at(2)));
+        }
+    } else if (cmd == "NEWPLAYER") {
+        if (args.size() == 1) {
+            game_data.playerMap[stoi(args.at(0))] = new PlayerData();
+            std::cout << "NEW PLAYER ADDED\n";
+        } else if (args.size() == 2 && stoi(args.at(1))) {
+            //int id = stoi(args.at(0));
+            //game_data.playerMap[id] = new PlayerData();
+            //myPlayer = game_data.playerMap[id];
+            myPlayer = game_data.playerMap[stoi(args.at(0))] = new PlayerData(); // works?
+            std::cout << "CLIENT ADDED TO GAME\n";
+        }
+    } else if (cmd == "KICKPLAYER") {
+        std::cout << "Kicking player\n";
+        if (args.size() == 1) {
+            int id = stoi(args.at(0));
+            for (int i = id; i <= MAX_PLAYERS; i++) {
+                //game_data.playerMap[id] = nullptr;
+                //if (game_data.playerMap[id + 1] != nullptr) {
+                //    game_data.playerMap[id] = game_data.playerMap[id + 1];
+                //}
+                game_data.playerMap[id] = game_data.playerMap[id + 1];
+                if (game_data.playerMap[id + 1] == nullptr) {
+                    break;
+                } // TODO - this doesn't work like I hoped, rework it // one player gets frozen, the other becomes them and leaves their shadow
+            }
         }
     } else {
         std::cout << "Received: " << cmd << std::endl;
@@ -127,15 +160,25 @@ void MyGame::input(SDL_Event& event) {
 }
 
 void MyGame::update() {
+    /*
     player1.y = game_data.player1Y;
     player2.y = game_data.player2Y; // New - Player 2 handling
     ball.x = game_data.ballX; // New - Ball handling
     ball.y = game_data.ballY;
+    */
 }
 
 void MyGame::render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    for (int id = 1; id <= MAX_PLAYERS; id++) {
+        if (game_data.playerMap[id] == nullptr) break;
+        SDL_RenderDrawRect(renderer, &game_data.playerMap[id]->getRect());
+        //SDL_RenderDrawRect(renderer, &game_data.playerMap[id]->entity);
+    }
+    /*
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderDrawRect(renderer, &player1);
     SDL_RenderDrawRect(renderer, &player2); // New - Player 2 render
     SDL_RenderFillRect(renderer, &ball);//SDL_RenderDrawRect(renderer, &ball); // New - Render ball
+    */
 }
