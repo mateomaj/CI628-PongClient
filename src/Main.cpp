@@ -11,6 +11,12 @@ bool is_running = true;
 
 MyGame* game = new MyGame();
 
+//int tpf; // time passed this frame, used in simulation
+
+//int lastReceivedTime; // Tracks when was the last time a message was received from the server // last-now > 17 means that the server hasn't updated anything this frame so the client should simulate it
+//bool confirmReceive = false; // ^^^ Alt solution - checking time can be inconsistent so this flag will be true when a message is received and reset at the end of each frame
+int lastReceivedTime; // ^^^ Alt alt solution - last message received time can be used as deltatime for simulation, overriden in loop after update // 
+
 static int on_receive(void* socket_ptr) {
     TCPsocket socket = (TCPsocket)socket_ptr;
 
@@ -60,14 +66,20 @@ static int on_receive(void* socket_ptr) {
                 }
             }
 
-            game->on_receive(cmd, args);
+            if (cmd == "UPD") { // Tells this client this message lead to a game update // It should be placed towards the end of the message so the actual time is closer to the end of the updates
+                lastReceivedTime = SDL_GetTicks();
+            } else {
+                game->on_receive(cmd, args);
+            }
 
-            if (cmd == "exit") {
+            if (cmd == "EXIT") {
                 break;
             }
 
             token = strtok_s(NULL, ";", &outer_saveptr);
         }
+
+        //confirmReceive = true;
 
         if (cmd == "exit") {
             break;
@@ -105,7 +117,10 @@ static int on_send(void* socket_ptr) {
 void loop(SDL_Renderer* renderer) {
     SDL_Event event;
 
+    lastReceivedTime = SDL_GetTicks(); // Inital time for simulation // Just in case we would need it
+
     while (is_running) {
+        //tpf = SDL_GetTicks();
         // input
         while (SDL_PollEvent(&event)) {
             if ((event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) && event.key.repeat == 0) {
@@ -134,8 +149,14 @@ void loop(SDL_Renderer* renderer) {
         SDL_RenderClear(renderer);
 
         game->update();
+        game->updateSimulated((SDL_GetTicks() - lastReceivedTime)/1000.0);
+
+        lastReceivedTime = SDL_GetTicks();
 
         game->render(renderer);
+
+        //confirmReceive = false;
+        
 
         SDL_RenderPresent(renderer);
 

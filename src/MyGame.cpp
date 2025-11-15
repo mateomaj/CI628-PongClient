@@ -15,7 +15,11 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
     } else if (cmd == "PLAYER_DATA") {
         if (args.size() == 3) {
             int id = stoi(args.at(0));
-            game_data.playerMap[id]->setPos(stoi(args.at(1)), stoi(args.at(2)));
+            game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+        } else if (args.size() == 5) {
+            int id = stoi(args.at(0));
+            game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+            game_data.playerMap[id]->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
         }
     } else if (cmd == "NEWPLAYER") {
         if (args.size() == 1) {
@@ -29,19 +33,23 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             std::cout << "CLIENT ADDED TO GAME\n";
         }
     } else if (cmd == "KICKPLAYER") {
-        std::cout << "Kicking player\n";
+        std::cout << "Kicking player ";
         if (args.size() == 1) {
             int id = stoi(args.at(0));
+            std::cout << id << "\n";
             for (int i = id; i <= MAX_PLAYERS; i++) {
                 //game_data.playerMap[id] = nullptr;
                 //if (game_data.playerMap[id + 1] != nullptr) {
                 //    game_data.playerMap[id] = game_data.playerMap[id + 1];
                 //}
-                game_data.playerMap[id] = game_data.playerMap[id + 1];
-                if (game_data.playerMap[id + 1] == nullptr) {
+                //std::cout << id << ", " << i << ", " << game_data.playerMap[i] << ", " << game_data.playerMap[i + 1] << std::endl;
+                game_data.playerMap[i] = game_data.playerMap[i + 1];
+                if (game_data.playerMap[i + 1] == nullptr) {
                     break;
-                } // TODO - this doesn't work like I hoped, rework it // one player gets frozen, the other becomes them and leaves their shadow
+                }
             }
+        } else {
+            std::cout << "\n";
         }
     } else {
         std::cout << "Received: " << cmd << std::endl;
@@ -166,6 +174,15 @@ void MyGame::update() {
     ball.x = game_data.ballX; // New - Ball handling
     ball.y = game_data.ballY;
     */
+}
+
+void MyGame::updateSimulated(double tpf) {
+    //std::cout << tpf << std::endl;
+    for (int id = 1; id <= MAX_PLAYERS; id++) {
+        PlayerData* data = game_data.playerMap[id];
+        if (data == nullptr) break;
+        data->setSimOffsets(data->velocityX * tpf, data->velocityY * tpf);
+    }
 }
 
 void MyGame::render(SDL_Renderer* renderer) {

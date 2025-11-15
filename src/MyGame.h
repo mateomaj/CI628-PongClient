@@ -31,6 +31,10 @@ struct PlayerData {
     //int playerX = 0;
     //int playerY = 0;
     SDL_Rect entity = {0, 0, 40, 40};
+    double velocityX = 0;
+    double velocityY = 0;
+    double simXOffset = 0;
+    double simYOffset = 0;
     int health = 0;
     int maxHealth = 0; // Mana/Stamina/Charge could be defined in a hashMap of a new struct statData with a current value and max value // This is a lot more complicated, so the first tests for replication will just rely on health // Values like damage don't need to be sent, health of relevant entities (ones with visible health bars (all of them at the moment)) will be updated via server messages so sending damage would be pointless // It does mean that when lagging, health will decrease with a delay. Fixing that would require sending in damage, and doing clientside collision handling.
     //bool isMe = false; // Makes this player instance stand out as THIS client's player // aka "Is that player mine?"
@@ -61,14 +65,25 @@ struct PlayerData {
         }
     }
 
-    void setPos(int x, int y) {
+    void setPosition(int x, int y) {
         entity.x = x;
         entity.y = y;
     }
 
+    void setVelocity(double velX, double velY) {
+        velocityX = velX;
+        velocityY = velY;
+    }
+
+    void setSimOffsets(double simX, double simY) {
+        simXOffset = simX;
+        simYOffset = simY;
+    }
+
     // Manipulate the entity rectangle and return one with the proper offsets
     SDL_Rect getRect() {
-        SDL_Rect sprite = { entity.x, entity.y, entity.w, entity.h };
+        SDL_Rect sprite = { entity.x + simXOffset, entity.y + simYOffset, entity.w, entity.h };
+        setSimOffsets(0, 0);
         //std::cout << sprite.x << sprite.y << sprite.w << sprite.h << "\n";
         return sprite;
     }
@@ -105,7 +120,8 @@ class MyGame {
         void on_receive(std::string message, std::vector<std::string>& args);
         void send(std::string message);
         void input(SDL_Event& event);
-        void update();
+        void update(); // Update all clientside objects at 60fps
+        void updateSimulated(double tpf); // new - Simulate updates for objects that are actively updated by the server
         void render(SDL_Renderer* renderer);
         //MyGame() {
             //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::RANGER) << std::endl; // Since we can convert int to enum, we can send player class type as int/short // Since data is sent as a string, different int types don't really matter, only whole vs decimals
