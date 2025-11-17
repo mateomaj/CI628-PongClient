@@ -33,7 +33,7 @@ static int on_receive(void* socket_ptr) {
     do {
         received = SDLNet_TCP_Recv(socket, message, message_length);
         message[received] = '\0';
-
+        //cout << message << endl;
         // The things we have to do without string.split() 
 
         //printf(message);
@@ -67,6 +67,9 @@ static int on_receive(void* socket_ptr) {
             }
 
             if (cmd == "UPD") { // Tells this client this message lead to a game update // It should be placed towards the end of the message so the actual time is closer to the end of the updates
+                //int boogus = (lastReceivedTime - SDL_GetTicks());
+                //cout << boogus << endl;
+                //cout << (SDL_GetTicks() - lastReceivedTime) << endl;
                 lastReceivedTime = SDL_GetTicks();
             } else {
                 game->on_receive(cmd, args);
@@ -103,7 +106,7 @@ static int on_send(void* socket_ptr) {
 
             game->messages.clear();
 
-            cout << "Sending_TCP: " << message << endl;
+            //cout << "Sending_TCP: " << message << endl;
 
             SDLNet_TCP_Send(socket, message.c_str(), message.length());
         }
@@ -117,9 +120,14 @@ static int on_send(void* socket_ptr) {
 void loop(SDL_Renderer* renderer) {
     SDL_Event event;
 
+    const int frameDelay = 1000 / 60;
+
+    //int frameStart, frameTime;
+
     lastReceivedTime = SDL_GetTicks(); // Inital time for simulation // Just in case we would need it
 
     while (is_running) {
+        //frameStart = SDL_GetTicks();
         //tpf = SDL_GetTicks();
         // input
         while (SDL_PollEvent(&event)) {
@@ -149,18 +157,27 @@ void loop(SDL_Renderer* renderer) {
         SDL_RenderClear(renderer);
 
         game->update();
-        game->updateSimulated((SDL_GetTicks() - lastReceivedTime)/1000.0);
+        int simTime = SDL_GetTicks();
+        game->updateSimulated((simTime - lastReceivedTime) / 1000.0);
+        lastReceivedTime = simTime;
+        //game->updateSimulated(-(lastReceivedTime - (lastReceivedTime = SDL_GetTicks())) / 1000.0);
+        //game->updateSimulated((SDL_GetTicks() - lastReceivedTime)/1000.0);
 
-        lastReceivedTime = SDL_GetTicks();
+        //lastReceivedTime = SDL_GetTicks();
 
         game->render(renderer);
 
         //confirmReceive = false;
         
-
         SDL_RenderPresent(renderer);
 
-        SDL_Delay(17);
+        //frameTime = SDL_GetTicks() - frameStart;
+        //if (frameDelay > frameTime) {
+            //cout << frameTime << endl;
+            //SDL_Delay(frameDelay - frameTime);
+        //}
+
+        //SDL_Delay(17);
     }
 }
 

@@ -177,7 +177,7 @@ void MyGame::update() {
 }
 
 void MyGame::updateSimulated(double tpf) {
-    //std::cout << tpf << std::endl;
+    std::cout << tpf << std::endl;
     for (int id = 1; id <= MAX_PLAYERS; id++) {
         PlayerData* data = game_data.playerMap[id];
         if (data == nullptr) break;
