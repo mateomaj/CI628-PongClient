@@ -1,6 +1,7 @@
 #include "SDL_net.h"
 
 #include "MyGame.h"
+#include "GameUI.h"
 
 using namespace std;
 
@@ -122,12 +123,12 @@ void loop(SDL_Renderer* renderer) {
 
     const int frameDelay = 1000 / 60;
 
-    //int frameStart, frameTime;
+    int frameStart, frameTime;
 
     lastReceivedTime = SDL_GetTicks(); // Inital time for simulation // Just in case we would need it
 
     while (is_running) {
-        //frameStart = SDL_GetTicks();
+        frameStart = SDL_GetTicks();
         //tpf = SDL_GetTicks();
         // input
         while (SDL_PollEvent(&event)) {
@@ -144,7 +145,9 @@ void loop(SDL_Renderer* renderer) {
                     default:
                         break;
                 }
-            }
+            }// else if (event.type == SDL_MOUSEBUTTONDOWN) {
+            //    game->clickInput(event);
+            //}
 
             if (event.type == SDL_QUIT) {
                 game->send("DISCONNECT");
@@ -158,11 +161,11 @@ void loop(SDL_Renderer* renderer) {
 
         game->update();
         int simTime = SDL_GetTicks();
-        game->updateSimulated((simTime - lastReceivedTime) / 1000.0);
+        game->updateSimulated((simTime - lastReceivedTime) / 500.0); // Since the server is running at ~2x speed, update sim at 2x tpf
         lastReceivedTime = simTime;
         //game->updateSimulated(-(lastReceivedTime - (lastReceivedTime = SDL_GetTicks())) / 1000.0);
         //game->updateSimulated((SDL_GetTicks() - lastReceivedTime)/1000.0);
-
+        
         //lastReceivedTime = SDL_GetTicks();
 
         game->render(renderer);
@@ -171,11 +174,11 @@ void loop(SDL_Renderer* renderer) {
         
         SDL_RenderPresent(renderer);
 
-        //frameTime = SDL_GetTicks() - frameStart;
-        //if (frameDelay > frameTime) {
+        frameTime = SDL_GetTicks() - frameStart;
+        if (frameDelay > frameTime) {
             //cout << frameTime << endl;
-            //SDL_Delay(frameDelay - frameTime);
-        //}
+            SDL_Delay(frameDelay - frameTime);
+        }
 
         //SDL_Delay(17);
     }

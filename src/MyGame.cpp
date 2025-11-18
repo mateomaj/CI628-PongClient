@@ -18,8 +18,14 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
         } else if (args.size() == 5) {
             int id = stoi(args.at(0));
-            game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
-            game_data.playerMap[id]->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
+            //game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+            //game_data.playerMap[id]->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
+            PlayerData* player = game_data.playerMap[id];
+            player->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+            player->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
+            if (player != myPlayer && player->velocityX != 0) { // Other players can face towards their velocity so we won't need to store their input handlers
+                player->facingRight = player->velocityX > 0;
+            }
         }
     } else if (cmd == "NEWPLAYER") {
         if (args.size() == 1) {
@@ -29,7 +35,7 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             //int id = stoi(args.at(0));
             //game_data.playerMap[id] = new PlayerData();
             //myPlayer = game_data.playerMap[id];
-            myPlayer = game_data.playerMap[stoi(args.at(0))] = new PlayerData(); // works?
+            myPlayer = (MyPlayerData*) (game_data.playerMap[stoi(args.at(0))] = new PlayerData()); // works?
             std::cout << "CLIENT ADDED TO GAME\n";
         }
     } else if (cmd == "KICKPLAYER") {
@@ -94,9 +100,60 @@ void MyGame::input(SDL_Event& event) {
         case SDLK_RALT:
             send(event.type == SDL_KEYDOWN ? "Alt_DOWN" : "Alt_UP");
             break;
+        case SDLK_1: // Change class debug
+            if (event.type == SDL_KEYDOWN) {
+                send("CHANGE_CLASS1");
+                myPlayer->setPlayerClass(PlayerClasses::KNIGHT);
+            }
+            break;
+        case SDLK_2:
+            if (event.type == SDL_KEYDOWN) {
+                send("CHANGE_CLASS2");
+                myPlayer->setPlayerClass(PlayerClasses::RANGER);
+            }
+            break;
+        case SDLK_3:
+            if (event.type == SDL_KEYDOWN) {
+                send("CHANGE_CLASS3");
+                myPlayer->setPlayerClass(PlayerClasses::MAGE);
+            }
+            break;
         case SDLK_ESCAPE: // Ignore escape input as using it to close the program takes priority
             break;
         default:
+            /*
+            if (event.type == SDL_KEYDOWN) {
+                switch (event.key.keysym.sym) { // VERY BASIC TURN AROUND HANDLE // TODO - IMPROVE
+                case SDLK_a:
+                    myPlayer->facingRight = false;
+                    break;
+                case SDLK_d:
+                    myPlayer->facingRight = true;
+                    break;
+                }
+            }*/
+            
+            switch (event.key.keysym.sym) { // VERY BASIC TURN AROUND HANDLE // TODO - IMPROVE
+                case SDLK_a:
+                    if (event.type == SDL_KEYDOWN) {
+                        myPlayer->facingRight = false;
+                        myPlayer->isHoldingLeft = true;
+                    } else {
+                        myPlayer->isHoldingLeft = false;
+                        myPlayer->facingRight = myPlayer->isHoldingRight;
+                    }
+                    break;
+                case SDLK_d:
+                    if (event.type == SDL_KEYDOWN) {
+                        myPlayer->facingRight = true;
+                        myPlayer->isHoldingRight = true;
+                    } else {
+                        myPlayer->isHoldingRight = false;
+                        myPlayer->facingRight = !myPlayer->isHoldingLeft;
+                    }
+                    break;
+            }
+            
             //char kms[1] = { (char)event.key.keysym.sym };
             //std::cout << (char)event.key.keysym.sym << "_Down" << std::endl;
             //std::cout << kms + "_Down" << std::endl;
@@ -167,6 +224,10 @@ void MyGame::input(SDL_Event& event) {
     */
 }
 
+//void MyGame::clickInput(SDL_Event& event) {
+//    std::cout << "oi\n";
+//}
+
 void MyGame::update() {
     /*
     player1.y = game_data.player1Y;
@@ -177,7 +238,7 @@ void MyGame::update() {
 }
 
 void MyGame::updateSimulated(double tpf) {
-    std::cout << tpf << std::endl;
+    //std::cout << tpf << std::endl;
     for (int id = 1; id <= MAX_PLAYERS; id++) {
         PlayerData* data = game_data.playerMap[id];
         if (data == nullptr) break;
@@ -189,7 +250,8 @@ void MyGame::render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     for (int id = 1; id <= MAX_PLAYERS; id++) {
         if (game_data.playerMap[id] == nullptr) break;
-        SDL_RenderDrawRect(renderer, &game_data.playerMap[id]->getRect());
+        game_data.playerMap[id]->render(renderer);
+        //SDL_RenderDrawRect(renderer, &game_data.playerMap[id]->getRect());
         //SDL_RenderDrawRect(renderer, &game_data.playerMap[id]->entity);
     }
     /*
