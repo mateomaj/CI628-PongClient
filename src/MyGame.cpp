@@ -28,15 +28,31 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             }
         }
     } else if (cmd == "NEWPLAYER") {
+        //std::cout << args.size() << std::endl;
         if (args.size() == 1) {
             game_data.playerMap[stoi(args.at(0))] = new PlayerData();
             std::cout << "NEW PLAYER ADDED\n";
-        } else if (args.size() == 2 && stoi(args.at(1))) {
+        } else if (args.size() == 2) {
             //int id = stoi(args.at(0));
             //game_data.playerMap[id] = new PlayerData();
             //myPlayer = game_data.playerMap[id];
-            myPlayer = (MyPlayerData*) (game_data.playerMap[stoi(args.at(0))] = new PlayerData()); // works?
-            std::cout << "CLIENT ADDED TO GAME\n";
+            if (stoi(args.at(1))) {
+                myPlayer = (MyPlayerData*)(game_data.playerMap[stoi(args.at(0))] = new PlayerData());
+                std::cout << "CLIENT ADDED TO GAME\n";
+            } else {
+                game_data.playerMap[stoi(args.at(0))] = new PlayerData();
+                std::cout << "NEW PLAYER ADDED\n";
+            }
+        } else if (args.size() == 3) {
+            if (stoi(args.at(1))) {
+                myPlayer = (MyPlayerData*)(game_data.playerMap[stoi(args.at(0))] = new PlayerData());
+                myPlayer->isReady = stoi(args.at(2));
+                std::cout << "CLIENT ADDED TO GAME\n";
+            } else {
+                game_data.playerMap[stoi(args.at(0))] = new PlayerData();
+                game_data.playerMap[stoi(args.at(0))]->isReady = stoi(args.at(2));
+                std::cout << "NEW PLAYER ADDED\n";
+            }
         }
     } else if (cmd == "KICKPLAYER") {
         std::cout << "Kicking player ";
@@ -57,6 +73,19 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         } else {
             std::cout << "\n";
         }
+    } else if (cmd == "CHANGE_CLASS") {
+        if (args.size() == 2) {
+            game_data.playerMap[stoi(args.at(0))]->setPlayerClass(PlayerClasses(stoi(args.at(1))));
+        }
+    } else if (cmd == "SET_READY") {
+        if (args.size() == 2) {
+            game_data.playerMap[stoi(args.at(0))]->isReady = stoi(args.at(1));
+            //std::cout << "SET READY - " << args.at(1) << std::endl;
+        }
+    } else if (cmd == "START_GAME") {
+        std::cout << "THE GAME SHOULD START NOW YIPEEEEEEEEEEEEEEEEEEEEEE\n";
+    } else if (cmd == "GAME_OVER") {
+        
     } else {
         std::cout << "Received: " << cmd << std::endl;
     }
@@ -100,7 +129,7 @@ void MyGame::input(SDL_Event& event) {
         case SDLK_RALT:
             send(event.type == SDL_KEYDOWN ? "Alt_DOWN" : "Alt_UP");
             break;
-        case SDLK_1: // Change class debug
+        /*case SDLK_1: // Change class debug
             if (event.type == SDL_KEYDOWN) {
                 send("CHANGE_CLASS1");
                 myPlayer->setPlayerClass(PlayerClasses::KNIGHT);
@@ -117,7 +146,7 @@ void MyGame::input(SDL_Event& event) {
                 send("CHANGE_CLASS3");
                 myPlayer->setPlayerClass(PlayerClasses::MAGE);
             }
-            break;
+            break;*/
         case SDLK_ESCAPE: // Ignore escape input as using it to close the program takes priority
             break;
         default:
@@ -249,15 +278,25 @@ void MyGame::updateSimulated(double tpf) {
 void MyGame::render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     for (int id = 1; id <= MAX_PLAYERS; id++) {
-        if (game_data.playerMap[id] == nullptr) break;
-        game_data.playerMap[id]->render(renderer);
+        PlayerData* data = game_data.playerMap[id];
+        if (data == nullptr) break;
+        if (data == myPlayer) continue;
+        data->render(renderer);
+        //if (game_data.playerMap[id] == nullptr) break;
+        //if (game_data.playerMap[id] == myPlayer) continue;
+        //game_data.playerMap[id]->render(renderer);
         //SDL_RenderDrawRect(renderer, &game_data.playerMap[id]->getRect());
         //SDL_RenderDrawRect(renderer, &game_data.playerMap[id]->entity);
     }
+    myPlayer->render(renderer); // Rendering the client's player last so they render above the others
     /*
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderDrawRect(renderer, &player1);
     SDL_RenderDrawRect(renderer, &player2); // New - Player 2 render
     SDL_RenderFillRect(renderer, &ball);//SDL_RenderDrawRect(renderer, &ball); // New - Render ball
     */
+}
+
+GameData MyGame::getGameData() { // Even though it's static, I can't get the right instance back within GameUI
+    return game_data;
 }

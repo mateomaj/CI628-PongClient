@@ -85,7 +85,7 @@ static int on_receive(void* socket_ptr) {
 
         //confirmReceive = true;
 
-        if (cmd == "exit") {
+        if (cmd == "EXIT") {
             break;
         }
 
@@ -126,6 +126,9 @@ void loop(SDL_Renderer* renderer) {
     int frameStart, frameTime;
 
     lastReceivedTime = SDL_GetTicks(); // Inital time for simulation // Just in case we would need it
+
+    GameLobby* lobby = new GameLobby();
+    is_running = lobby->loop(renderer, game);
 
     while (is_running) {
         frameStart = SDL_GetTicks();
