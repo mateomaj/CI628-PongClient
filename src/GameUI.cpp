@@ -3,7 +3,7 @@
 
 void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
     SDL_Rect srcRect = { 0, 0, 20, 20 };
-    for (int id = 1; id <= 4; id++) {
+    for (int id = 1; id <= game->MAX_PLAYERS; id++) {
         SDL_Rect dstRect = { 210 + (id - 1) * 100, 260, 80, 80 };
         SDL_SetRenderDrawColor(renderer, 120, 120, 120, 255);
         SDL_RenderFillRect(renderer, &dstRect);
@@ -96,14 +96,61 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
         }
 	}
     game->getGameData().setReady(false);
+    for (int id = 1; id <= game->MAX_PLAYERS; id++) {
+        PlayerData* data = game->getGameData().playerMap[id];
+        if (data == nullptr) break;
+        data->isReady = false; // TODO - Don't forget to do this serverside too if I really want to make the game loop without closing
+    }
 	return true;
 }
 
 void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
-
+    // Simple text prompt displaying game data
 }
 
 bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
+    SDL_Event event;
+
+    const int frameDelay = 1000 / 60;
+    int frameStart, frameTime;
+    while (true) {//while (is_running) {
+        //std::cout << is_running << std::endl;
+        frameStart = SDL_GetTicks();
+        while (SDL_PollEvent(&event)) {
+            //if ((event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) && event.key.repeat == 0) {
+            if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+                switch (event.key.keysym.sym) {
+                case SDLK_ESCAPE:
+                    game->send("DISCONNECT");
+                    SDL_Delay(100);
+                    return false;
+                    break;
+                default:
+                    return true;
+                    break;
+                }
+            }
+
+            if (event.type == SDL_QUIT) {
+                game->send("DISCONNECT");
+                SDL_Delay(100);
+                return false;
+            }
+        }
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        render(renderer, game);
+
+        SDL_RenderPresent(renderer);
+
+        frameTime = SDL_GetTicks() - frameStart;
+        if (frameDelay > frameTime) {
+            //cout << frameTime << endl;
+            SDL_Delay(frameDelay - frameTime);
+        }
+    }
 	return true;
 }
 

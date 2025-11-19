@@ -84,6 +84,13 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         }
     } else if (cmd == "START_GAME") {
         std::cout << "THE GAME SHOULD START NOW YIPEEEEEEEEEEEEEEEEEEEEEE\n";
+        game_data.setReady(true);
+        /*
+        for (int id = 1; id <= MAX_PLAYERS; id++) {
+            PlayerData* data = game_data.playerMap[id];
+            if (data == nullptr) break;
+            data->isReady = false; // TODO - Don't forget to do this serverside too if I really want to make the game loop without closing
+        }*/
     } else if (cmd == "GAME_OVER") {
         
     } else {

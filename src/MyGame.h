@@ -162,10 +162,13 @@ struct NPCData {
 
 static struct GameData {
 private:
-    bool ready = false;
+    bool ready = false; // Flags if the game is ready to start running
+    bool running = true; // Flags if the game is actively running in the main state (outside of ends creen UI and game lobby) // separates the game loop running from the game itself wanting to run in main (main->is_running)
 public:
     bool isReady() { return ready; }
     void setReady(bool isReady) { ready = isReady; }
+    bool isRunning() { return running; }
+    void setRunning(bool isRunning) { running = isRunning; }
     //https://www.geeksforgeeks.org/cpp/how-to-use-hashmap-in-cpp - hashMaps in C++
     // NOTE - Since the max number of players can be capped, playerMap can work just as well when converted to a PlayerData* array[MAX_PLAYERS], skipping the need for hashing algorythms and saving on a ton of memory use for the exact same functionality. playerMap was initially an unordered_map<> so I wouldn't have to worry about fixed size limits. npcMap however should stay as a list type because npc can come and go (at least that would be true if the game was 100% finished, as of writing, there are no minion spawns mechanics in the game, so if the final version only has a single boss per game, npcMap could be replaces with an NPCData* boss variable to save on memory and processing time) // But for now I'm leaving all the features open-ended so working with them is as simple as possible. Optimising flexible code like this is a lot easier so it can be done towards the end of the project if I have to.
     std::unordered_map<int, PlayerData*> playerMap; // List of players // The same reference is used both in gameplay and UI // Player class (and related values) and ready status are set in UI, then remain fixed when switching to gameplay
@@ -175,12 +178,13 @@ public:
 class MyGame {
 
     private:
-        static const int MAX_PLAYERS = 4;
+        //static const int MAX_PLAYERS = 4;
         //SDL_Rect player1 = { 200, 0, 20, 60 };
         //SDL_Rect player2 = { 600, 0, 20, 60 }; // New - Player 2
         //SDL_Rect ball = { 0, 0, 20, 20 }; // New - Ball
         //PlayerData* myPlayer = nullptr; // Stores a PlayerData reference as this client's player for easy access and client-specific functions // i.e simulating the client player locally, highlighting client's player in UI, etc
     public:
+        static const int MAX_PLAYERS = 4;
         std::vector<std::string> messages;
         MyPlayerData* myPlayer = nullptr;
 

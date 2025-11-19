@@ -125,66 +125,77 @@ void loop(SDL_Renderer* renderer) {
 
     int frameStart, frameTime;
 
-    lastReceivedTime = SDL_GetTicks(); // Inital time for simulation // Just in case we would need it
+    do {
 
-    GameLobby* lobby = new GameLobby();
-    is_running = lobby->loop(renderer, game);
+        GameLobby* lobby = new GameLobby();
+        //is_running = lobby->loop(renderer, game);
+        game->getGameData().setRunning(is_running = lobby->loop(renderer, game));
+        delete lobby;
 
-    while (is_running) {
-        frameStart = SDL_GetTicks();
-        //tpf = SDL_GetTicks();
-        // input
-        while (SDL_PollEvent(&event)) {
-            if ((event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) && event.key.repeat == 0) {
-                game->input(event);
+        lastReceivedTime = SDL_GetTicks(); // Inital time for simulation // Just in case we would need it
 
-                switch (event.key.keysym.sym) {
+        while (is_running && game->getGameData().isRunning()) {
+            frameStart = SDL_GetTicks();
+            //tpf = SDL_GetTicks();
+            // input
+            while (SDL_PollEvent(&event)) {
+                if ((event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) && event.key.repeat == 0) {
+                    game->input(event);
+
+                    switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
                         game->send("DISCONNECT");
                         SDL_Delay(100);
                         is_running = false;
                         break;
-
                     default:
                         break;
+                    }
+                }// else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                //    game->clickInput(event);
+                //}
+
+                if (event.type == SDL_QUIT) {
+                    game->send("DISCONNECT");
+                    SDL_Delay(100);
+                    is_running = false;
                 }
-            }// else if (event.type == SDL_MOUSEBUTTONDOWN) {
-            //    game->clickInput(event);
-            //}
-
-            if (event.type == SDL_QUIT) {
-                game->send("DISCONNECT");
-                SDL_Delay(100);
-                is_running = false;
             }
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+
+            game->update();
+            int simTime = SDL_GetTicks();
+            game->updateSimulated((simTime - lastReceivedTime) / 500.0); // Since the server is running at ~2x speed, update sim at 2x tpf
+            lastReceivedTime = simTime;
+            //game->updateSimulated(-(lastReceivedTime - (lastReceivedTime = SDL_GetTicks())) / 1000.0);
+            //game->updateSimulated((SDL_GetTicks() - lastReceivedTime)/1000.0);
+
+            //lastReceivedTime = SDL_GetTicks();
+
+            game->render(renderer);
+
+            //confirmReceive = false;
+
+            SDL_RenderPresent(renderer);
+
+            frameTime = SDL_GetTicks() - frameStart;
+            if (frameDelay > frameTime) {
+                //cout << frameTime << endl;
+                SDL_Delay(frameDelay - frameTime);
+            }
+
+            //SDL_Delay(17);
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        game->update();
-        int simTime = SDL_GetTicks();
-        game->updateSimulated((simTime - lastReceivedTime) / 500.0); // Since the server is running at ~2x speed, update sim at 2x tpf
-        lastReceivedTime = simTime;
-        //game->updateSimulated(-(lastReceivedTime - (lastReceivedTime = SDL_GetTicks())) / 1000.0);
-        //game->updateSimulated((SDL_GetTicks() - lastReceivedTime)/1000.0);
-        
-        //lastReceivedTime = SDL_GetTicks();
-
-        game->render(renderer);
-
-        //confirmReceive = false;
-        
-        SDL_RenderPresent(renderer);
-
-        frameTime = SDL_GetTicks() - frameStart;
-        if (frameDelay > frameTime) {
-            //cout << frameTime << endl;
-            SDL_Delay(frameDelay - frameTime);
+        if (is_running && !game->getGameData().isRunning()) {
+            GameEndScreen* endScreen = new GameEndScreen();
+            is_running = endScreen->loop(renderer, game);
+            delete endScreen;
         }
 
-        //SDL_Delay(17);
-    }
+    } while (is_running);
 }
 
 int run_game() {
