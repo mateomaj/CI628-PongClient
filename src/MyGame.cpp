@@ -43,14 +43,16 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
                 game_data.playerMap[stoi(args.at(0))] = new PlayerData();
                 std::cout << "NEW PLAYER ADDED\n";
             }
-        } else if (args.size() == 3) {
+        } else if (args.size() == 4) {
             if (stoi(args.at(1))) {
                 myPlayer = (MyPlayerData*)(game_data.playerMap[stoi(args.at(0))] = new PlayerData());
-                myPlayer->isReady = stoi(args.at(2));
+                myPlayer->setPlayerClass(PlayerClasses(stoi(args.at(2))));
+                myPlayer->isReady = stoi(args.at(3));
                 std::cout << "CLIENT ADDED TO GAME\n";
             } else {
                 game_data.playerMap[stoi(args.at(0))] = new PlayerData();
-                game_data.playerMap[stoi(args.at(0))]->isReady = stoi(args.at(2));
+                game_data.playerMap[stoi(args.at(0))]->setPlayerClass(PlayerClasses(stoi(args.at(2))));
+                game_data.playerMap[stoi(args.at(0))]->isReady = stoi(args.at(3));
                 std::cout << "NEW PLAYER ADDED\n";
             }
         }
@@ -92,7 +94,9 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             data->isReady = false; // TODO - Don't forget to do this serverside too if I really want to make the game loop without closing
         }*/
     } else if (cmd == "GAME_OVER") {
-        
+        std::cout << "THE GAME SHOULD END NOW BOOOOOOOOOOOOOOOOOOOOOOOOOO\n";
+        game_data.setReady(false);
+        game_data.setRunning(false);
     } else {
         std::cout << "Received: " << cmd << std::endl;
     }
@@ -304,6 +308,7 @@ void MyGame::render(SDL_Renderer* renderer) {
     */
 }
 
-GameData MyGame::getGameData() { // Even though it's static, I can't get the right instance back within GameUI
-    return game_data;
+//GameData MyGame::getGameData() { // Even though it's static, I can't get the right instance back within GameUI
+GameData* MyGame::getGameData() { // Even though it's static, I can't get the right instance back within GameUI
+    return &game_data;
 }

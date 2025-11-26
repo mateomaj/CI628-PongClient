@@ -195,7 +195,8 @@ class MyGame {
         void update(); // Update all clientside objects at 60fps
         void updateSimulated(double tpf); // new - Simulate updates for objects that are actively updated by the server
         void render(SDL_Renderer* renderer);
-        GameData getGameData();
+        //GameData getGameData();
+        GameData* getGameData(); // Return a pointer instead
         //MyGame() {
             //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::RANGER) << std::endl; // Since we can convert int to enum, we can send player class type as int/short // Since data is sent as a string, different int types don't really matter, only whole vs decimals
             //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::MAGE) << std::endl;

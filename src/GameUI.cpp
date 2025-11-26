@@ -8,7 +8,8 @@ void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
         SDL_SetRenderDrawColor(renderer, 120, 120, 120, 255);
         SDL_RenderFillRect(renderer, &dstRect);
 
-        PlayerData* data = game->getGameData().playerMap[id];
+        //PlayerData* data = game->getGameData().playerMap[id];
+        PlayerData* data = game->getGameData()->playerMap[id];
         //std::cout << "nullptr? - " << id << std::endl;
         if (data == nullptr) continue;
         //std::cout << "not nullptr\n";
@@ -31,7 +32,9 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
 
 	const int frameDelay = 1000 / 60;
 	int frameStart, frameTime;
-	while (!game->getGameData().isReady()) {//while (is_running) {
+    //std::cout << game->getGameData().isReady() << std::endl;
+	//while (!game->getGameData().isReady()) {//while (is_running) {
+	while (!game->getGameData()->isReady()) {
 		//std::cout << is_running << std::endl;
 		frameStart = SDL_GetTicks();
         while (SDL_PollEvent(&event)) {
@@ -95,9 +98,11 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
             SDL_Delay(frameDelay - frameTime);
         }
 	}
-    game->getGameData().setReady(false);
+    //game->getGameData().setReady(false); // I guess setting it here doesn't work // At least this way of doing it seems to be read-only // I forgot to make getGameData return a pointer, that's why it was read only because changes to that instance didn't go anywhere
+    game->getGameData()->setReady(false);
     for (int id = 1; id <= game->MAX_PLAYERS; id++) {
-        PlayerData* data = game->getGameData().playerMap[id];
+        //PlayerData* data = game->getGameData().playerMap[id];
+        PlayerData* data = game->getGameData()->playerMap[id];
         if (data == nullptr) break;
         data->isReady = false; // TODO - Don't forget to do this serverside too if I really want to make the game loop without closing
     }

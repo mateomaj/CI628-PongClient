@@ -129,12 +129,14 @@ void loop(SDL_Renderer* renderer) {
 
         GameLobby* lobby = new GameLobby();
         //is_running = lobby->loop(renderer, game);
-        game->getGameData().setRunning(is_running = lobby->loop(renderer, game));
+        //game->getGameData().setRunning(is_running = lobby->loop(renderer, game));
+        game->getGameData()->setRunning(is_running = lobby->loop(renderer, game));
         delete lobby;
 
         lastReceivedTime = SDL_GetTicks(); // Inital time for simulation // Just in case we would need it
 
-        while (is_running && game->getGameData().isRunning()) {
+        //while (is_running && game->getGameData().isRunning()) {
+        while (is_running && game->getGameData()->isRunning()) {
             frameStart = SDL_GetTicks();
             //tpf = SDL_GetTicks();
             // input
@@ -189,9 +191,12 @@ void loop(SDL_Renderer* renderer) {
             //SDL_Delay(17);
         }
 
-        if (is_running && !game->getGameData().isRunning()) {
+        //if (is_running && !game->getGameData().isRunning()) {
+        if (is_running && !game->getGameData()->isRunning()) {
             GameEndScreen* endScreen = new GameEndScreen();
+            cout << "Entering End Screen\n";
             is_running = endScreen->loop(renderer, game);
+            cout << "Exiting End Screen with code: " << is_running << endl;
             delete endScreen;
         }
 
