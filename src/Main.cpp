@@ -243,7 +243,7 @@ void loop(SDL_Renderer* renderer) {
                 
                 //char* tempMessage = bufferedUpdateMessage;
                 char tempMessage[1024];
-                copyString(tempMessage, bufferedUpdateMessage);
+                copyString(tempMessage, bufferedUpdateMessage); // TODO - There is a very tiny chance that this could still get overwritten into a messy corrupted message if the thread and this run at the same time with UPD message[] having different contents // Until that happens, I won't think about it more than I already did.
                 //bufferedUpdateMessage = nullptr;
                 bufferedUpdateMessage[0] = '\0';
                 //cout << "SET MESSAGE: " << tempMessage << endl;
