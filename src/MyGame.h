@@ -183,6 +183,7 @@ class MyGame {
         //SDL_Rect player2 = { 600, 0, 20, 60 }; // New - Player 2
         //SDL_Rect ball = { 0, 0, 20, 20 }; // New - Ball
         //PlayerData* myPlayer = nullptr; // Stores a PlayerData reference as this client's player for easy access and client-specific functions // i.e simulating the client player locally, highlighting client's player in UI, etc
+        bool quit = false;
     public:
         static const int MAX_PLAYERS = 4;
         std::vector<std::string> messages;
@@ -192,9 +193,14 @@ class MyGame {
         void send(std::string message);
         void input(SDL_Event& event);
         //void clickInput(SDL_Event& event); // New - for mouse inputs
-        void update(); // Update all clientside objects at 60fps
-        void updateSimulated(double tpf); // new - Simulate updates for objects that are actively updated by the server
+        //void update(); // Update all clientside objects at 60fps
+        void update(double tpf); // Update all clientside objects based on local frame time
+        void updateSimulated(double tpf); // new - Simulate updates for objects that are actively updated by the server // Edit - Simulations are done relative to the last time update data was sent / the last simulation hapenned.
+        void updateSimulated(double tpf, char* updateMessage); // Simulates objects updated by the server // Reads and simulates data relative to the given update message
+        //void updateSimulated(double tpf, std::string updateMessage); // Simulates objects updated by the server // Reads and simulates data relative to the given update message
         void render(SDL_Renderer* renderer);
+        void forceQuit() { quit = true; }
+        bool shouldForceQuit() { return quit; }
         //GameData getGameData();
         GameData* getGameData(); // Return a pointer instead
         //MyGame() {

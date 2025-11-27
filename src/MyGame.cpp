@@ -12,7 +12,8 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             game_data.ballY = stoi(args.at(3));
         }
         */
-    } else if (cmd == "PLAYER_DATA") {
+    //} else if (cmd == "PLAYER_DATA") {
+    } else if (cmd == "PD") { // Abbreviation
         if (args.size() == 3) {
             int id = stoi(args.at(0));
             game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
@@ -97,8 +98,12 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         std::cout << "THE GAME SHOULD END NOW BOOOOOOOOOOOOOOOOOOOOOOOOOO\n";
         game_data.setReady(false);
         game_data.setRunning(false);
+    } else if (cmd == "EXIT") {
+        std::cout << "PLAYER LOBBY IS FULL OR GAME SESSION IS ACTIVE\n";
+        // Despawn everything I guess
     } else {
-        std::cout << "Received: " << cmd << std::endl;
+        //std::cout << "Received: " << cmd << std::endl;
+        //std::cout << "\n\n\n\n\n" << "Received: " << cmd << std::endl << "\n\n\n\n\n";
     }
 }
 
@@ -268,7 +273,8 @@ void MyGame::input(SDL_Event& event) {
 //    std::cout << "oi\n";
 //}
 
-void MyGame::update() {
+//void MyGame::update() {
+void MyGame::update(double tpf) {
     /*
     player1.y = game_data.player1Y;
     player2.y = game_data.player2Y; // New - Player 2 handling
@@ -284,6 +290,49 @@ void MyGame::updateSimulated(double tpf) {
         if (data == nullptr) break;
         data->setSimOffsets(data->velocityX * tpf, data->velocityY * tpf);
     }
+}
+
+void MyGame::updateSimulated(double tpf, char* updateMessage) {
+//void MyGame::updateSimulated(double tpf, std::string updateMessage) {
+    //std::cout << updateMessage << std::endl;
+    //std::cout << updateMessage << " - " << updateMessage << std::endl; // When printing these out, a random ";" is added to the message. But from what I can tell it's just a weird bug with the print, the actual message doesn't have it // Aparently it does???????????????????????????????????????????????????????????? // Aparently this is some quantum semi-colon trash
+    
+    // Handle the given update message as you would in onReceive(), and then update simulated as normal
+
+    std::string cmd = "";
+
+    char* outer_saveptr = NULL;
+    char* inner_saveptr = NULL;
+
+    char* message;
+    //message = updateMessage.assign();
+
+    char* token = strtok_s(updateMessage, ":", &outer_saveptr);
+    //char* token = strtok_s(updateMessage., ":", &outer_saveptr);
+
+    while (token != NULL) {
+        char* pch = strtok_s(token, ",", &inner_saveptr);
+        //std::cout << "prebitch\n";
+        // get the command, which is the first string in the message
+        cmd = std::string(pch);
+        //std::cout << "postbitch\n";
+
+        // then get the arguments to the command
+        std::vector<std::string> args;
+
+        while (pch != NULL) {
+            pch = strtok_s(NULL, ",", &inner_saveptr);
+
+            if (pch != NULL) {
+                args.push_back(std::string(pch));
+            }
+        }
+
+        on_receive(cmd, args);
+
+        token = strtok_s(NULL, ":", &outer_saveptr);
+    }
+    updateSimulated(tpf);
 }
 
 void MyGame::render(SDL_Renderer* renderer) {

@@ -35,6 +35,7 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
     //std::cout << game->getGameData().isReady() << std::endl;
 	//while (!game->getGameData().isReady()) {//while (is_running) {
 	while (!game->getGameData()->isReady()) {
+        if (game->shouldForceQuit()) return 0;
 		//std::cout << is_running << std::endl;
 		frameStart = SDL_GetTicks();
         while (SDL_PollEvent(&event)) {
@@ -119,6 +120,7 @@ bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
     const int frameDelay = 1000 / 60;
     int frameStart, frameTime;
     while (true) {//while (is_running) {
+        if (game->shouldForceQuit()) return 0;
         //std::cout << is_running << std::endl;
         frameStart = SDL_GetTicks();
         while (SDL_PollEvent(&event)) {
