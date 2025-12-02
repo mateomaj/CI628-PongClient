@@ -7,7 +7,7 @@ using namespace std;
 
 const char* IP_NAME = "localhost";
 const Uint16 PORT = 55555;
-const int FRAME_RATE_MULTIPLIER = 1;
+const int FRAME_RATE_MULTIPLIER = 2;
 
 bool is_running = true;
 

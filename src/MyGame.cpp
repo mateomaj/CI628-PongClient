@@ -295,11 +295,18 @@ void MyGame::update(double tpf) {
     if (game_data.activeProjectileCount > 0) {
         for (int i = 0; i < 500; i++) {
             if (game_data.projectiles[i] != nullptr) {
-                game_data.projectiles[i]->update(tpf);
-                if (game_data.projectiles[i]->markedForDespawn) {
-                    game_data.projectiles[i] = nullptr;
-                    game_data.activeProjectileCount--;
+                if (!game_data.projectiles[i]->justAdded) {
+                    game_data.projectiles[i]->update(tpf);
+                    if (game_data.projectiles[i]->markedForDespawn) {
+                        delete game_data.projectiles[i];
+                        //free(game_data.projectiles[i]); https://www.quora.com/Why-does-C-use-free-instead-of-delete-to-deallocate-memory-allocated-by-new - Looks like delete is the better keyword to use when it comes to deleting 'new' instances
+                        game_data.projectiles[i] = nullptr;
+                        game_data.activeProjectileCount--;
+                    } else {
+                        foundProjectiles++;
+                    }
                 } else {
+                    game_data.projectiles[i]->justAdded = false;
                     foundProjectiles++;
                 }
                 if (foundProjectiles >= game_data.activeProjectileCount) break; // stop searching if all known projectiles are seen
@@ -411,6 +418,7 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
     //long timeRef = stol(args.at(0));
     long long timeRef = stoll(args.at(0));
     ProjectileData* projectilesToAdd[10]; // Max 10 so this doesn't take up too much memory
+    //ProjectileData* projectilesToAdd = new ProjectileData[10]; // Max 10 so this doesn't take up too much memory
     // Spawn amount
     int projectileAmount = 0;
     switch (id) {
@@ -481,8 +489,10 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
                 }
                 break;
         }
-
+        //long long currentTime = getCurrentTimeMS();
         int timeOffset = getCurrentTimeMS() - timeRef;
+        //int timeOffset = currentTime - timeRef;
+        //std::cout << currentTime << " - " << timeRef << " = " <<  timeOffset << std::endl; // It's crazy to think about the time difference here being 0-2ms at most, I know this is a localHost connection but this also considers the time between the message is written, sent, received, and processed up to this point, all within milliseconds.
         for (int i = 0; i < projectileAmount; i++) {
             projectilesToAdd[i]->placeWithDelta(timeOffset);
         }
@@ -499,4 +509,5 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
             }
         }
     }
+    //delete[] projectilesToAdd; // Delete the projectiles array as we don't need it
 }

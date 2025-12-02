@@ -52,6 +52,8 @@ struct PlayerData {
     void setPlayerClass(PlayerClasses playerClass) {
         if (this->playerClass == playerClass) return; // Only run when the new player class is different so we don't unload the texture for no reason
         this->playerClass = playerClass;
+        if (spriteTexture != nullptr) SDL_DestroyTexture(spriteTexture); // SDL_DestroyTexture() can be used to unload textures from entities. It's good enough for now, but I could also handle textures by storing each texture somewhere in memory and have entities point to them. That would remove the need to constantly load and unload images for each new entity.
+        //std::cout << "changeSprite\n";
         spriteTexture = nullptr;
         switch (playerClass) {
             case PlayerClasses::KNIGHT:
@@ -102,10 +104,10 @@ struct PlayerData {
         //if (hasGravity) {
             for (; tpf > 0.016; tpf -= 0.016) {
                 y += velocityY * 0.016;
-                velocityY += -420 * 0.016;
+                velocityY += 420 * 0.016;
             }
             y += velocityY * tpf;
-            velocityY += -420 * tpf;
+            velocityY += 420 * tpf;
         //}
         //else {
         //    y += velocityY * tpf;
@@ -115,7 +117,7 @@ struct PlayerData {
     // Manipulate the entity rectangle and return one with the proper offsets
     SDL_Rect getRect() {
         //SDL_Rect sprite = { entity.x + simXOffset - 12, entity.y + simYOffset - 12, entity.w, entity.h };
-        SDL_Rect sprite = { x - 12, fmin(540, y) - 12, entity.w, entity.h };
+        SDL_Rect sprite = { x - 12, fmin(540, y) - 12, entity.w, entity.h }; // ~541 is ground level so if anything, we can keep the player from falling through the floor by not letting their sprite render below floor level
         //setSimOffsets(0, 0);
         //std::cout << sprite.x << sprite.y << sprite.w << sprite.h << "\n";
         return sprite;
@@ -170,6 +172,11 @@ struct PlayerData {
             SDL_RenderCopyEx(renderer, spriteTexture, &srcRect, &getRect(), 0, nullptr, facingRight ? SDL_RendererFlip::SDL_FLIP_NONE : SDL_RendererFlip::SDL_FLIP_HORIZONTAL);
         }
     }
+
+    ~PlayerData() {
+        if (spriteTexture != nullptr) SDL_DestroyTexture(spriteTexture); // Temporary, destroy the projectile's texture so it doesn't say behind in memory
+        //delete& entity;
+    }
 };
 
 struct MyPlayerData : public PlayerData {
@@ -195,14 +202,15 @@ struct ProjectileData {
     SDL_Rect sourceRect = { 0, 0, 0, 0 };
     SDL_Texture* spriteTexture = nullptr;
     char* spriteRef = "";
-    SDL_Color* flatColor = nullptr;
+    //SDL_Color* flatColor = nullptr;
     double x = 0; // Storing position separately to avoid truncation issues
     double y = 0;
     double velocityX = 0;
     double velocityY = 0;
     bool hasGravity = false;
     double rotation = 0; 
-    bool markedForDespawn = false;
+    bool justAdded = true; // Notes the entity as newly created so it gets ignored on the first update call // This is there to work with the same offset created in the server, where entities created within a tick don't move until the next one is called // Could technically be false by default, but I think keeping it true will always have the intended effect. // Yeah that fixes it a little bit
+    bool markedForDespawn = false; // Sets the projectile to be despawned during an update call
 
     void setPosition(int x, int y) {
         entity.x = x;
@@ -249,6 +257,38 @@ struct ProjectileData {
         }
     }
 
+    // I don't have a good place to put this but since it relates to memory I'll write it here...
+    // As of the current setup where projectiles can spawn & despawn where the projectiles and textures are deleted when they aren't needed anymore, I ran a test to check memory usage over time to catch any possible leaks. // I didn't watch the memory value the entire time, just left the game running in the background for a while
+    // First ~30 minutes had no signs of any leaks, memory capped at 172mb, with 173mb being possible if enoguh projectiles spawned at once with good rng // Memory stayed around 171mb on average, often going down to 170mb, but rarely going to 172mb // The Process Memory debug display showed values up to 189mb (the upper cap being important as it changes relative to the highest recorded value)
+    // Around ~50 minutes the first sign of 173mb was spotted in the upper bound (moving from 189 to 190) // Not a guaranteed sign of a memory leak as it could be achieved with enough luck // Values still averaged at 171mb but 172mb became slightly more common // Either being a good streak of luck or a tiny memory leak
+    // Around ~80 minutes the cap increased to 191mb, implying a 174mb value was hit at some point // (this needs to be verified) Either I remembered the upper bound wrong or an impossibly low chance was hit where enough projectiles spawned to briefly reach 174mb. // Pausing the server to allow all projectiles to naturally despawn showed the memory level at 170mb, this isn't good as it's supposed to be 169mb by default, implying a possible memory leak. // 172mb became a lot more common on average, being as common as 171mb if not more. Around this point, 173mb was also spotted on the graph at a few points past this point. That is a fairly strong sign of a memory leak. // A source image for the flatline 170mb exists
+    // Around ~140 minutes something weird happened, 173mb was spottet multiple times, but also a lot of 170mb. Pausing the server again to see where memory rests at left it at 169mb, the normal value. // Either the thing causing the memory leak reset, or something else happened that I don't know about. // A source image for the 169mb exists
+    // Past 140 and around 150-160-170 minutes where this is being written, the values fluctuate between 170mb and 172mb, 171mb became a brief transition between the two. // Pausing the server for a third time dropped the value down to 170mb again // source image is included // After unpausing, the values now fluctuate almost evenly between 170-172mb, though sometimes 172mb appears a lot more often. // While 170mb still appears with active projectiles, pausing the server at 170mb doesn't bring the number down.
+    // Concluding at ~180 minutes, the value remains flatlined at 170mb with no projectiles on screen. I will leave it running in case anything changes while I write this out. // There is a small chance of a memory leak unless it's a part of the program that changes in size over time, more on that later.
+    //
+    // The conclusion from this is that there most likely isn't a significant memory leak in the projectile system. At worst it would have to be a really tiny one.
+    // My main reason for this is that this behaviour mimicks what I found from another system in the client, the update message buffer.
+    // Aside from possible leaks (as of writing) in the player and npc systems, the projectile and update message buffer system are the only ones with a chance of a memory leak while not actively interacting with the game. The projectile system was just added, and similar behaviour was seen without it.
+    // The addition of the update message buffer was the first source of a memory leak that I found, mostly because of concurency issues. It used to leak memory constantly but later I added a system for that memory to be cleared whenever it was possible without breaking anything. In the version as of writing this, with the update message buffer active, it took ~30-40 minutes to increase the memory from 169mb to 170mb, after another 20-30 minutes, it went back down to 169mb. As the memory went back down eventually, I decided to leave it as is since it's not going up constantly, though why this up and down happens I have no idea. If this weird fluctuation is the same reason why the test happens like this here, then there most likely is no memory leak in the projectile system, and all objects are removed properly.
+    // Final update, 200 minutes, 170mb flatline. If there is a memory leak, it only went up by ~1mb in 3 hours and 20 minutes, with the flip to 170mb happening early on. If that's all there is then there's nothing to worry about. With the chance of the value dropping back down, it's hard to say if anything is leaking at all.
+    //
+    // Restarting the game to see how it operates at the start:
+    //  - At a fixed 168mb, the debug profiler shows the cap as 185mb, showing that it tries to give an extra 17mb worth of room when displaying memory values, which also proves that there might have been a 174mb value hit at some point during testing
+    //  - The game runs at a default 169mb in the game state. // A few projectiles can exist before moving from 169mb to 170mb // This contrasts the late stages of the test where having a few projectiles hit minimum 170mb, with 169mb being unreachable with no projectiles present.
+    //  - The fluctuations in memory are actually very similar at the beginning of the game as at the end of the test, though there might be a slight shift in favour of higher values later on which aligns with the update message buffer leak.
+    //
+    // In the end, this test didn't show anything worrying.
+    //
+    // Looking back on the update message buffer, it's all char[] arrays so there is no memory to leak from there as all the memory used is already defined. There's still (maybe) a possible concurrency issue that didn't happen once in 200 minutes, but there should be no leaks from there. That means that the leak that goes back and forth comes from somewhere else.
+    // ^ I can't find anything obvious that could cause a leak in the game loop while running with no input from the player
+
+    ~ProjectileData() {
+        //std::cout << "hello\n";
+        if (spriteTexture != nullptr) SDL_DestroyTexture(spriteTexture); // Temporary, destroy the projectile's texture so it doesn't say behind in memory
+        //delete& entity;
+        //delete& sourceRect;
+    }
+
     void update(double tpf) { // Update uses the same logic as placeWithDelta() but in double format for deltaTime, it also includes extra logic to help with unload checks
         /*
         entity.x += velocityX * tpf;
@@ -271,11 +311,11 @@ struct ProjectileData {
             for (; tpf > 0.016; tpf -= 0.016) {
                 y += velocityY * 0.016;
                 //velocityY += game_data.GRAVITY * 0.016;
-                velocityY += -420 * 0.016;
+                velocityY += 420 * 0.016;
             }
             y += velocityY * tpf;
             //velocityY += game_data.GRAVITY * tpf;
-            velocityY += -420 * tpf;
+            velocityY += 420 * tpf;
         }
         else {
             y += velocityY * tpf;
@@ -291,10 +331,10 @@ struct ProjectileData {
         entity.y = y;
         if (spriteTexture != nullptr) {
             SDL_RenderCopyEx(renderer, spriteTexture, &sourceRect, &entity, rotation, nullptr, SDL_RendererFlip::SDL_FLIP_NONE);
-        } else if (flatColor != nullptr) {
-            SDL_SetRenderDrawColor(renderer, flatColor->r, flatColor->g, flatColor->b, flatColor->a); // Can I not rotate non-sprite rectangles???
-            SDL_RenderFillRect(renderer, &entity);
-        }
+        }// else if (flatColor != nullptr) {
+        //    SDL_SetRenderDrawColor(renderer, flatColor->r, flatColor->g, flatColor->b, flatColor->a); // Can I not rotate non-sprite rectangles???
+        //    SDL_RenderFillRect(renderer, &entity);
+        //}
     }
 
     void placeWithDelta(int deltaTime) {
@@ -318,11 +358,11 @@ struct ProjectileData {
             for (; deltaTime > 16; deltaTime -= 16) { // Simulate gravity as if it happened over multiple frames if deltaTime is greater than one frame (only works at 60fps... actually all 120fps does here is add detail, though server simulations never include the extra detail as it's 60pfs ran at 2x speed, not 120fps at 1x speed. So while allowing this to support higher detail at 120fps, it technically would desync from the server instead of showing the same result at half speed)
                 y += velocityY * 0.016;
                 //velocityY += game_data.GRAVITY * 0.016;
-                velocityY += -420 * 0.016;
+                velocityY += 420 * 0.016;
             }
             y += velocityY * (deltaTime / 1000.0);
             //velocityY += game_data.GRAVITY * (deltaTime / 1000.0);
-            velocityY += -420 * (deltaTime / 1000.0);
+            velocityY += 420 * (deltaTime / 1000.0);
         }
         else {
             y += velocityY * (deltaTime / 1000.0);
@@ -357,7 +397,7 @@ private:
     bool ready = false; // Flags if the game is ready to start running
     bool running = true; // Flags if the game is actively running in the main state (outside of ends creen UI and game lobby) // separates the game loop running from the game itself wanting to run in main (main->is_running)
 public:
-    static const int GRAVITY = -420;
+    static const int GRAVITY = 420;
     bool isReady() { return ready; }
     void setReady(bool isReady) { ready = isReady; }
     bool isRunning() { return running; }
