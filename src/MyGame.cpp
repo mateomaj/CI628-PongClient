@@ -27,6 +27,13 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
             if (player != myPlayer && player->velocityX != 0) { // Other players can face towards their velocity so we won't need to store their input handlers
                 player->facingRight = player->velocityX > 0;
             }
+        } else {
+            std::cout << "BROKEN\n"; // A print just in case the concurrency bug does ever happen so I can catch at least one form of it // I think the crash happened? VS didn't tell me what it was so I'm not sure
+        }
+    } else if (cmd == "SATK") {
+        //std::cout << args.at(3) << std::endl;
+        if (args.size() >= 2) {
+            spawnAttack(args);
         }
     } else if (cmd == "NEWPLAYER") {
         //std::cout << args.size() << std::endl;
@@ -102,7 +109,7 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         std::cout << "PLAYER LOBBY IS FULL OR GAME SESSION IS ACTIVE\n";
         // Despawn everything I guess
     } else {
-        //std::cout << "Received: " << cmd << std::endl;
+        std::cout << "Received: " << cmd << std::endl;
         //std::cout << "\n\n\n\n\n" << "Received: " << cmd << std::endl << "\n\n\n\n\n";
     }
 }
@@ -275,12 +282,30 @@ void MyGame::input(SDL_Event& event) {
 
 //void MyGame::update() {
 void MyGame::update(double tpf) {
+    //std::cout << tpf << std::endl;
     /*
     player1.y = game_data.player1Y;
     player2.y = game_data.player2Y; // New - Player 2 handling
     ball.x = game_data.ballX; // New - Ball handling
     ball.y = game_data.ballY;
     */
+
+    // New - Update projectiles
+    int foundProjectiles = 0;
+    if (game_data.activeProjectileCount > 0) {
+        for (int i = 0; i < 500; i++) {
+            if (game_data.projectiles[i] != nullptr) {
+                game_data.projectiles[i]->update(tpf);
+                if (game_data.projectiles[i]->markedForDespawn) {
+                    game_data.projectiles[i] = nullptr;
+                    game_data.activeProjectileCount--;
+                } else {
+                    foundProjectiles++;
+                }
+                if (foundProjectiles >= game_data.activeProjectileCount) break; // stop searching if all known projectiles are seen
+            }
+        }
+    }
 }
 
 void MyGame::updateSimulated(double tpf) {
@@ -288,7 +313,9 @@ void MyGame::updateSimulated(double tpf) {
     for (int id = 1; id <= MAX_PLAYERS; id++) {
         PlayerData* data = game_data.playerMap[id];
         if (data == nullptr) break;
-        data->setSimOffsets(data->velocityX * tpf, data->velocityY * tpf);
+        data->update(tpf);
+        //std::cout << data->entity.y << std::endl;
+        //data->setSimOffsets(data->velocityX * tpf, data->velocityY * tpf);
     }
 }
 
@@ -304,7 +331,7 @@ void MyGame::updateSimulated(double tpf, char* updateMessage) {
     char* outer_saveptr = NULL;
     char* inner_saveptr = NULL;
 
-    char* message;
+    //char* message;
     //message = updateMessage.assign();
 
     char* token = strtok_s(updateMessage, ":", &outer_saveptr);
@@ -337,6 +364,19 @@ void MyGame::updateSimulated(double tpf, char* updateMessage) {
 
 void MyGame::render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+    // New - Render projectiles
+    int foundProjectiles = 0;
+    if (game_data.activeProjectileCount > 0) {
+        for (int i = 0; i < 500; i++) {
+            if (game_data.projectiles[i] != nullptr) {
+                game_data.projectiles[i]->render(renderer);
+                foundProjectiles++;
+                if (foundProjectiles >= game_data.activeProjectileCount) break; // stop searching if all known projectiles are seen
+            }
+        }
+    }
+
     for (int id = 1; id <= MAX_PLAYERS; id++) {
         PlayerData* data = game_data.playerMap[id];
         if (data == nullptr) break;
@@ -360,4 +400,103 @@ void MyGame::render(SDL_Renderer* renderer) {
 //GameData MyGame::getGameData() { // Even though it's static, I can't get the right instance back within GameUI
 GameData* MyGame::getGameData() { // Even though it's static, I can't get the right instance back within GameUI
     return &game_data;
+}
+
+void MyGame::spawnAttack(std::vector<std::string>& args) {
+    int id = stoi(args.at(1));
+    //std::cout << args.at(0) << std::endl;
+    //std::cout << LONG_MAX << std::endl;
+    //std::cout << INT_MAX << std::endl; // WHY THE FUCK IS INT_MAX AND LONG_MAX THE SAME NUMBER, ISN'T THE POINT OF LONG THAT IT'S BIGGER THAN INT??????????????????????? WHAT THE HELL IS A LONG LONG???????????????????????????? // https://stackoverflow.com/questions/7456902/long-vs-int-c-c-whats-the-point - some else asked the same question
+    // Apparently long is designed to be at least as long as int, where int is a ""natural" size for the processor", from what I can see long long guarantees a 64bit number
+    //long timeRef = stol(args.at(0));
+    long long timeRef = stoll(args.at(0));
+    ProjectileData* projectilesToAdd[10]; // Max 10 so this doesn't take up too much memory
+    // Spawn amount
+    int projectileAmount = 0;
+    switch (id) {
+        case 1:
+            projectileAmount = 8;
+            break;
+        case 2:
+            projectileAmount = 7;
+            break;
+        case 3:
+            projectileAmount = 1;
+            break;
+    }
+    if (projectileAmount > 0 && game_data.activeProjectileCount <= 500 - projectileAmount) { // only spawn projectiles if the game can store them in the projectiles array
+        //const int pAmount = projectileAmount;
+        //ProjectileData* projectilesToAdd[pAmount]; // Wow I hate you
+        for (int i = 0; i < projectileAmount; i++) {
+            projectilesToAdd[i] = new ProjectileData(id);
+        }
+        int spawnX; // WHY DOES C++ NEED TO MAKE EVERYTHING SO DIFFICULT! WHY DO I NEED TO DECLARE ALL VARIABLES WITHIN A SWITCH CASE OUTSIDE OF IT??? BECAUSE THIS FREAKING LANGUAGE THINKS I MIGHT USE THEM IN THE OTHER CASES FOR SOME REASON. LET ME CODE IN PEACE!
+        int spawnY;
+        int gapWidth;
+        int direction;
+        switch (id) {
+            case 1:
+                //int gapWidth = 800 / projectileAmount;
+                gapWidth = 800 / projectileAmount;
+                //int spawnX = 0;
+                spawnX = 0;
+                if (args.size() >= 3) {
+                    spawnX = stoi(args.at(2)) * 15;
+                }
+                for (int i = 0; i < projectileAmount; i++) {
+                    //projectilesToAdd[i]->entity.x = spawnX + i * gapWidth;
+                    //projectilesToAdd[i]->entity.y = -75;
+                    projectilesToAdd[i]->setPosition(spawnX + i * gapWidth, -75);
+                    projectilesToAdd[i]->velocityY = 100;
+                    projectilesToAdd[i]->rotation = 90;
+                }
+                break;
+            case 2:
+                //int gapWidth = 600 / projectileAmount;
+                gapWidth = 600 / projectileAmount;
+                //int spawnY = 0; // I hate you I hate you I hate you
+                spawnY = 0;
+                //int direction = 1;
+                direction = 1;
+                if (args.size() >= 4) {
+                    spawnY = stoi(args.at(3)) * 15;
+                    direction = stoi(args.at(2));
+                }
+                for (int i = 0; i < projectileAmount; i++) {
+                    projectilesToAdd[i]->setPosition(direction == 1 ? -75 : 875, spawnY + i * gapWidth);
+                    projectilesToAdd[i]->velocityX = direction * 100;
+                    projectilesToAdd[i]->rotation = direction == 1 ? 0 : 180;
+                }
+                break;
+            case 3:
+                //int direction = 1;
+                direction = 1;
+                if (args.size() >= 3) {
+                    direction = stoi(args.at(2));
+                }
+                for (int i = 0; i < projectileAmount; i++) {
+                    projectilesToAdd[i]->setPosition(direction == 1 ? -75 : 875, -800);
+                    projectilesToAdd[i]->velocityX = direction * 100;
+                    projectilesToAdd[i]->rotation = direction == 1 ? 0 : 180;
+                }
+                break;
+        }
+
+        int timeOffset = getCurrentTimeMS() - timeRef;
+        for (int i = 0; i < projectileAmount; i++) {
+            projectilesToAdd[i]->placeWithDelta(timeOffset);
+        }
+        // Yes there are concurrency issues here. But they only apply to the timing of when the projectiles are added vs when the next update will happen or is happening. In theory the only things that could happen here is not updating all new projectiles in the main loop because they haven't been added yet, and desyncing the projectiles from the server by an extra tick ahead by running update right as they are added in (which would probably align them better because of delays). The effect here is negligible so I'm not spending 2 days on trying to avoid it.
+        // Also, this thread is the only place where this function is called. I plan to spawn attacks on server response so timers are easier to sync up, so the projectile list only gets filled on this thread, freeing up space can happen on either of them.
+        for (int i = 0; i < 500; i++) {
+            if (game_data.projectiles[i] == nullptr) {
+                projectileAmount--;
+                game_data.projectiles[i] = projectilesToAdd[projectileAmount];
+                game_data.activeProjectileCount++;
+            }
+            if (projectileAmount == 0) {
+                break; // Break once all projectiles are added
+            }
+        }
+    }
 }

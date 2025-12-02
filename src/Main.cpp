@@ -7,7 +7,7 @@ using namespace std;
 
 const char* IP_NAME = "localhost";
 const Uint16 PORT = 55555;
-const int FRAME_RATE_MULTIPLIER = 2;
+const int FRAME_RATE_MULTIPLIER = 1;
 
 bool is_running = true;
 
@@ -233,6 +233,7 @@ void loop(SDL_Renderer* renderer) {
             SDL_RenderClear(renderer);
 
             int updateTime = SDL_GetTicks();
+            //cout << _Xtime_get_ticks() << endl;
             game->update(((updateTime - lastUpdateTime) / 1000.0) * FRAME_RATE_MULTIPLIER);
             lastUpdateTime = updateTime;
             int simTime = SDL_GetTicks();
