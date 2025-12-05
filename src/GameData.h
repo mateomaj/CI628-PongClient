@@ -7,6 +7,14 @@
 #include <string>
 #include <unordered_map>
 
+// Credit where credit is due:
+// The idea to define GameData in a separate file was also given by copilot while researching into the global variable scope issue
+//https://learn.microsoft.com/en-us/cpp/error-messages/tool-errors/linker-tools-error-lnk2005 - This error came up while trying to figure out what was going on, the error page along with copilot's response pushed me in the right direction on tackling this issue
+//https://stackoverflow.com/questions/3746484/why-am-i-getting-this-redefinition-of-class-error - Helped fighting the 'redefinition of class' issue. I knew about '#pragma once' as it showed up before but I didn't realise what it meant until seeing this forum post
+//https://stackoverflow.com/questions/10422034/when-to-use-extern-in-c - Helped with understanding what the 'extern' keyword meant
+//
+// Like mentioned in my git commit for this change, this fix is technically pointless as game_data could be a variable within the MyGame class instead of keeping it within global scope. Since using global variables isn't recommended, I will probably revert this back into MyGame.h at some point.
+
 struct PlayerData;
 struct MyPlayerData;
 struct NPCData;
