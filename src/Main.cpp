@@ -314,6 +314,8 @@ int run_game() {
         return -1;
     }
 
+    game->initTextures(renderer); // new - run initTextures() before starting the game loop
+
     loop(renderer);
 
     return 0;

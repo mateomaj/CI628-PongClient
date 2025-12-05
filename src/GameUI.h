@@ -2,6 +2,9 @@
 #include "SDL_ttf.h"
 #include "MyGame.h"
 
+
+
+
 class GameLobby {
 	private:
 		void render(SDL_Renderer* renderer, MyGame* game);

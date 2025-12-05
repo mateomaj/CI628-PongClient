@@ -14,6 +14,9 @@ void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
         if (data == nullptr) continue;
         //std::cout << "not nullptr\n";
 
+        //data->checkTexture(renderer); // The context where a function is called for the first time defines which context's global variables that function is allowed to use. Because checkTexture is called here first, it makes all future calls of it reference GameUI's game_data global variable instead of the one present in MyGame.h, WHAT A FUCKING JOKE, no wonder I couldn't see anything wrong with this, because this bullshit exists
+        // I don't want to swear too much in these comments because they get saved in commit history but how the hell am I not meant to crash out when every time I write two lines of code I run into the most bullshit c++ quirk I've ever seen in my life that makes me get stuck trying to fix it for two day minimum. This project should have been done at this point but it's random garbage like this that keeps ruining my sleep schedule because what do you mean a function's global scope is based on which file it was called from first... why is it like that? I can see some cool stuff being done with it but it only gets in the way.
+
         data->checkTexture(renderer);
         if (data->spriteTexture != nullptr) {
             SDL_RenderCopy(renderer, data->spriteTexture, &srcRect, &dstRect);

@@ -1,31 +1,20 @@
-#ifndef __MY_GAME_H__
-#define __MY_GAME_H__
+#pragma once
+//#include "MyGame.h"
+#include "SDL.h"
+#include "SDL_image.h"
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include <unordered_map>
 
-#include "SDL.h"
-#include "SDL_image.h"
-#include "GameData.h"
+struct PlayerData;
+struct MyPlayerData;
+struct NPCData;
+struct ProjectileData;
+struct PlayerAttackData;
 
-//struct PlayerData;
-//struct MyPlayerData;
-//struct NPCData;
-//struct ProjectileData;
-//struct PlayerAttackData;
-
-/*
-static struct GameData {
-    int player1Y = 0;
-    int player2Y = 0;
-    int ballX = 0;
-    int ballY = 0;
-} game_data;
-*/
-/*
-static struct GameData {
+//static struct GameData {
+struct GameData {
 private:
     bool ready = false; // Flags if the game is ready to start running
     bool running = true; // Flags if the game is actively running in the main state (outside of ends creen UI and game lobby) // separates the game loop running from the game itself wanting to run in main (main->is_running)
@@ -44,9 +33,11 @@ public:
     ProjectileData* projectiles[500]; // List and vector require an allocator to work with classes
     int activeProjectileCount = 0; // Number of active projectiles, used to calculate how many slots are available in the projectiles array
     std::unordered_map<int, SDL_Texture*> textures; // List of textures used within the game. Used to provide references to any existing texture without having to load it again.
-    //} game_data;
+//} game_data;
 };
-static GameData game_data;
+//static GameData game_data;
+
+extern GameData game_data;
 
 //https://www.geeksforgeeks.org/cpp/enum-classes-in-c-and-their-advantage-over-enum-datatype
 enum class PlayerClasses {
@@ -61,7 +52,7 @@ struct PlayerData {
     PlayerClasses playerClass = PlayerClasses::NONE; // Player class reference for sprites and other values
     //int playerX = 0;
     //int playerY = 0;
-    SDL_Rect entity = {0, 0, 40, 40};
+    SDL_Rect entity = { 0, 0, 40, 40 };
     SDL_Texture* spriteTexture = nullptr;
     double x = 0;
     double y = 0;
@@ -91,26 +82,26 @@ struct PlayerData {
         //std::cout << "changeSprite\n";
         spriteTexture = nullptr;
         switch (playerClass) {
-            case PlayerClasses::KNIGHT:
-                //spriteTexture = game_data.textures[1];
-                health = 250;
-                maxHealth = 250;
-                break;
-            case PlayerClasses::RANGER:
-                //spriteTexture = game_data.textures[2];
-                health = 175;
-                maxHealth = 175;
-                break;
-            case PlayerClasses::MAGE:
-                //spriteTexture = game_data.textures[3];
-                health = 150;
-                maxHealth = 150;
-                break;
-            default:
-                //spriteTexture = game_data.textures[0];
-                health = 100;
-                maxHealth = 100;
-                break;
+        case PlayerClasses::KNIGHT:
+            //spriteTexture = game_data.textures[1];
+            health = 250;
+            maxHealth = 250;
+            break;
+        case PlayerClasses::RANGER:
+            //spriteTexture = game_data.textures[2];
+            health = 175;
+            maxHealth = 175;
+            break;
+        case PlayerClasses::MAGE:
+            //spriteTexture = game_data.textures[3];
+            health = 150;
+            maxHealth = 150;
+            break;
+        default:
+            //spriteTexture = game_data.textures[0];
+            health = 100;
+            maxHealth = 100;
+            break;
         }
     }
 
@@ -141,19 +132,19 @@ struct PlayerData {
     void update(double tpf) {
         x += velocityX * tpf;
         //if (hasGravity) {
-            for (; tpf > 0.016; tpf -= 0.016) {
-                y += velocityY * 0.016;
-                //velocityY += 420 * 0.016;
-                velocityY += game_data.GRAVITY * 0.016;
-            }
-            y += velocityY * tpf;
-            //velocityY += 420 * tpf;
-            velocityY += game_data.GRAVITY * tpf; // Right........ Why the fuck is update() the only function that gets the proper reference to game_data??? // Both update() and render() are called from MyGame.cpp, so why does one get special treatment while the other doesn't
-            //std::cout << game_data.GRAVITY << std::endl;
-        //}
-        //else {
-        //    y += velocityY * tpf;
-        //}
+        for (; tpf > 0.016; tpf -= 0.016) {
+            y += velocityY * 0.016;
+            //velocityY += 420 * 0.016;
+            velocityY += game_data.GRAVITY * 0.016;
+        }
+        y += velocityY * tpf;
+        //velocityY += 420 * tpf;
+        velocityY += game_data.GRAVITY * tpf; // Right........ Why the fuck is update() the only function that gets the proper reference to game_data??? // Both update() and render() are called from MyGame.cpp, so why does one get special treatment while the other doesn't
+        //std::cout << game_data.GRAVITY << std::endl;
+    //}
+    //else {
+    //    y += velocityY * tpf;
+    //}
     }
 
     // Manipulate the entity rectangle and return one with the proper offsets
@@ -234,7 +225,7 @@ struct MyPlayerData : public PlayerData {
 
 struct NPCData {
     NPCClasses npcClass = NPCClasses::NONE;
-    SDL_Rect entity = {0, 0, 196, 176};
+    SDL_Rect entity = { 0, 0, 196, 176 };
 
     void setPos(int x, int y) {
         entity.x = x;
@@ -243,9 +234,9 @@ struct NPCData {
 };
 
 struct ProjectileData {
-//class ProjectileData {
-//public:
-    // Found a cool problem where the projectile moved faster/slower than intended depending on which direction they were moving in. Turns out it's caused by truncation as SDL_Rect stores its values as integers // rounding down makes things move faster to the left and slower to the right as truncation removes decimals and moves the number towards 0. // Seeing the speed difference was enough to figure it out but another cool tell for it was that the projectiles changed speed when crossing x=0 on the left side of the screen.
+    //class ProjectileData {
+    //public:
+        // Found a cool problem where the projectile moved faster/slower than intended depending on which direction they were moving in. Turns out it's caused by truncation as SDL_Rect stores its values as integers // rounding down makes things move faster to the left and slower to the right as truncation removes decimals and moves the number towards 0. // Seeing the speed difference was enough to figure it out but another cool tell for it was that the projectiles changed speed when crossing x=0 on the left side of the screen.
     SDL_Rect entity = { 0, 0, 40, 40 };
     SDL_Rect sourceRect = { 0, 0, 0, 0 };
     SDL_Texture* spriteTexture = nullptr;
@@ -256,7 +247,7 @@ struct ProjectileData {
     double velocityX = 0;
     double velocityY = 0;
     bool hasGravity = false;
-    double rotation = 0; 
+    double rotation = 0;
     bool justAdded = true; // Notes the entity as newly created so it gets ignored on the first update call // This is there to work with the same offset created in the server, where entities created within a tick don't move until the next one is called // Could technically be false by default, but I think keeping it true will always have the intended effect. // Yeah that fixes it a little bit
     bool markedForDespawn = false; // Sets the projectile to be despawned during an update call
 
@@ -291,19 +282,19 @@ struct ProjectileData {
 
     ProjectileData(int attackID) {
         switch (attackID) {
-            case 1:
-            case 2:
-                //spriteRef = "Assets/Textures/angel sword.png";
-                spriteTexture = game_data.textures[5];
-                sourceRect = { 0, 0, 50, 16 };
-                entity = { 0, 0, 50, 16 };
-                break;
-            case 3:
-                //spriteRef = "Assets/Textures/angel sword.png";
-                spriteTexture = game_data.textures[5];
-                sourceRect = { 0, 0, 50, 16 };
-                entity = { 0, 0, 50, 2400 };
-                break;
+        case 1:
+        case 2:
+            //spriteRef = "Assets/Textures/angel sword.png";
+            spriteTexture = game_data.textures[5];
+            sourceRect = { 0, 0, 50, 16 };
+            entity = { 0, 0, 50, 16 };
+            break;
+        case 3:
+            //spriteRef = "Assets/Textures/angel sword.png";
+            spriteTexture = game_data.textures[5];
+            sourceRect = { 0, 0, 50, 16 };
+            entity = { 0, 0, 50, 2400 };
+            break;
         }
     }
 
@@ -340,7 +331,7 @@ struct ProjectileData {
     }
 
     void update(double tpf) { // Update uses the same logic as placeWithDelta() but in double format for deltaTime, it also includes extra logic to help with unload checks
-        
+
         //entity.x += velocityX * tpf;
         //if (hasGravity) {
         //    for (; tpf > 0.016; tpf -= 0.016) {
@@ -370,8 +361,8 @@ struct ProjectileData {
         else {
             y += velocityY * tpf;
         }
-        double centerX = x + entity.w/2.0;
-        double centerY = y + entity.h/2.0;
+        double centerX = x + entity.w / 2.0;
+        double centerY = y + entity.h / 2.0;
         if (centerX < -150 || centerX > 950 || centerY < -150 || centerY > 750) markedForDespawn = true;
     }
 
@@ -388,7 +379,7 @@ struct ProjectileData {
     }
 
     void placeWithDelta(int deltaTime) {
-        
+
         //entity.x += velocityX * (deltaTime / 1000.0);
         //if (hasGravity) {
         //    for (; deltaTime > 16; deltaTime -= 16) { // Simulate gravity as if it happened over multiple frames if deltaTime is greater than one frame (only works at 60fps... actually all 120fps does here is add detail, though server simulations never include the extra detail as it's 60pfs ran at 2x speed, not 120fps at 1x speed. So while allowing this to support higher detail at 120fps, it technically would desync from the server instead of showing the same result at half speed)
@@ -402,7 +393,7 @@ struct ProjectileData {
         //} else {
         //    entity.y += velocityY * (deltaTime / 1000.0);
         //}
-        
+
         x += velocityX * (deltaTime / 1000.0);
         if (hasGravity) {
             for (; deltaTime > 16; deltaTime -= 16) { // Simulate gravity as if it happened over multiple frames if deltaTime is greater than one frame (only works at 60fps... actually all 120fps does here is add detail, though server simulations never include the extra detail as it's 60pfs ran at 2x speed, not 120fps at 1x speed. So while allowing this to support higher detail at 120fps, it technically would desync from the server instead of showing the same result at half speed)
@@ -421,7 +412,7 @@ struct ProjectileData {
 };
 
 struct PlayerAttackData : public ProjectileData {
-//class PlayerAttackData : public ProjectileData {
+    //class PlayerAttackData : public ProjectileData {
     bool boundToPlayer = false;
     int boundPlayerID = 0;
     int bindDirectionX = 1;
@@ -443,67 +434,4 @@ struct PlayerAttackData : public ProjectileData {
         }
     }
 };
-*/
-// Moving it back up since declaring it down here to include above classes clashes with the above classes referencing values from here, this language is a pain.
-/*
-static struct GameData {
-private:
-    bool ready = false; // Flags if the game is ready to start running
-    bool running = true; // Flags if the game is actively running in the main state (outside of ends creen UI and game lobby) // separates the game loop running from the game itself wanting to run in main (main->is_running)
-public:
-    static const int GRAVITY = 420;
-    bool isReady() { return ready; }
-    void setReady(bool isReady) { ready = isReady; }
-    bool isRunning() { return running; }
-    void setRunning(bool isRunning) { running = isRunning; }
-    //https://www.geeksforgeeks.org/cpp/how-to-use-hashmap-in-cpp - hashMaps in C++
-    // NOTE - Since the max number of players can be capped, playerMap can work just as well when converted to a PlayerData* array[MAX_PLAYERS], skipping the need for hashing algorythms and saving on a ton of memory use for the exact same functionality. playerMap was initially an unordered_map<> so I wouldn't have to worry about fixed size limits. npcMap however should stay as a list type because npc can come and go (at least that would be true if the game was 100% finished, as of writing, there are no minion spawns mechanics in the game, so if the final version only has a single boss per game, npcMap could be replaces with an NPCData* boss variable to save on memory and processing time) // But for now I'm leaving all the features open-ended so working with them is as simple as possible. Optimising flexible code like this is a lot easier so it can be done towards the end of the project if I have to.
-    std::unordered_map<int, PlayerData*> playerMap; // List of players // The same reference is used both in gameplay and UI // Player class (and related values) and ready status are set in UI, then remain fixed when switching to gameplay
-    std::unordered_map<int, NPCData*> npcMap; // List of active enemies and bosses in the game // IDs are used for quick references to specific NPCs
-    //std::vector<ProjectileData*> projectiles; // List of all active projectiles // Technically doesn't need IDs but also does when it comes to despawning projectiles after a collision if collisions aren't handled client-side. // for now, no IDs are used just to make this work
-    //std::list<ProjectileData*> projectiles;
-    ProjectileData* projectiles[500]; // List and vector require an allocator to work with classes
-    int activeProjectileCount = 0; // Number of active projectiles, used to calculate how many slots are available in the projectiles array
-    std::unordered_map<int, SDL_Texture*> textures; // List of textures used within the game. Used to provide references to any existing texture without having to load it again.
-} game_data;
-*/
 
-class MyGame {
-
-    private:
-        //static const int MAX_PLAYERS = 4;
-        //SDL_Rect player1 = { 200, 0, 20, 60 };
-        //SDL_Rect player2 = { 600, 0, 20, 60 }; // New - Player 2
-        //SDL_Rect ball = { 0, 0, 20, 20 }; // New - Ball
-        //PlayerData* myPlayer = nullptr; // Stores a PlayerData reference as this client's player for easy access and client-specific functions // i.e simulating the client player locally, highlighting client's player in UI, etc
-        bool quit = false;
-    public:
-        static const int MAX_PLAYERS = 4;
-        std::vector<std::string> messages;
-        MyPlayerData* myPlayer = nullptr;
-
-        void on_receive(std::string message, std::vector<std::string>& args);
-        void send(std::string message);
-        void input(SDL_Event& event);
-        //void clickInput(SDL_Event& event); // New - for mouse inputs
-        //void update(); // Update all clientside objects at 60fps
-        void update(double tpf); // Update all clientside objects based on local frame time
-        void updateSimulated(double tpf); // new - Simulate updates for objects that are actively updated by the server // Edit - Simulations are done relative to the last time update data was sent / the last simulation hapenned.
-        void updateSimulated(double tpf, char* updateMessage); // Simulates objects updated by the server // Reads and simulates data relative to the given update message
-        //void updateSimulated(double tpf, std::string updateMessage); // Simulates objects updated by the server // Reads and simulates data relative to the given update message
-        void render(SDL_Renderer* renderer);
-        void forceQuit() { quit = true; }
-        bool shouldForceQuit() { return quit; }
-        //GameData getGameData();
-        GameData* getGameData(); // Return a pointer instead
-        void spawnAttack(std::vector<std::string>& args);
-        //long getCurrentTimeMS() { return (long) (_Xtime_get_ticks() / 10000); }
-        long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); }
-        void initTextures(SDL_Renderer* renderer);
-        //MyGame() {
-            //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::RANGER) << std::endl; // Since we can convert int to enum, we can send player class type as int/short // Since data is sent as a string, different int types don't really matter, only whole vs decimals
-            //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::MAGE) << std::endl;
-        //}
-};
-
-#endif

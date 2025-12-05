@@ -511,3 +511,26 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
     }
     //delete[] projectilesToAdd; // Delete the projectiles array as we don't need it
 }
+
+// Create texture references for all relevant sprites within the asset folder and store them under a sprite ID
+// For the sake of knowing exactly what ID belongs to which texture, these references will be defined manually
+void MyGame::initTextures(SDL_Renderer* renderer) {
+    SDL_Surface* tempSurface = IMG_Load("Assets/Textures/BlankPlayer.png");
+    game_data.textures[0] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/Knight.png");
+    game_data.textures[1] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/Ranger.png");
+    game_data.textures[2] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/Mage.png");
+    game_data.textures[3] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/Foruman.png");
+    game_data.textures[4] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/angel sword.png");
+    game_data.textures[5] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+}
