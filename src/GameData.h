@@ -3,6 +3,7 @@
 #include "SDL.h"
 #include "SDL_image.h"
 
+#include <iostream>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -52,9 +53,9 @@ enum class PlayerClasses {
     NONE, KNIGHT, RANGER, MAGE
 };
 
-enum class NPCClasses {
-    NONE, FORUMAN
-};
+//enum class NPCClasses {
+//    NONE, FORUMAN
+//};
 
 struct PlayerData {
     PlayerClasses playerClass = PlayerClasses::NONE; // Player class reference for sprites and other values
@@ -226,19 +227,128 @@ struct PlayerData {
     }
 };
 
+// PlayerData with extra values that are only relevant to the local player
 struct MyPlayerData : public PlayerData {
     bool isHoldingLeft = false;
     bool isHoldingRight = false;
 };
 
+enum class NPCClasses {
+    NONE, FORUMAN
+};
+
 struct NPCData {
     NPCClasses npcClass = NPCClasses::NONE;
-    SDL_Rect entity = { 0, 0, 196, 176 };
+    SDL_Rect entity = { 0, 0, 20, 20 };
+    SDL_Rect sourceRect = { 0, 0, 0, 0 };
+    SDL_Texture* spriteTexture = nullptr;
+    double x = 0;
+    double y = 0;
+    double velocityX = 0;
+    double velocityY = 0;
+    int health;
+    int maxHealth;
+    double attackCooldown = 0;
 
     void setPos(int x, int y) {
         entity.x = x;
         entity.y = y;
+        this->x = x;
+        this->y = y;
     }
+
+    void setPos(double x, double y) {
+        entity.x = x;
+        entity.y = y;
+        this->x = x;
+        this->y = y;
+    }
+
+    void setVelocity(double velX, double velY) {
+        velocityX = velX;
+        velocityY = velY;
+    }
+
+    void setNPCClass(NPCClasses NPCClass) {
+        if (this->npcClass == NPCClass) return;
+        this->npcClass = NPCClass;
+        spriteTexture = nullptr;
+        switch (NPCClass) {
+            case NPCClasses::FORUMAN:
+                entity = { 0, 0, 196, 176 };
+                sourceRect = { 0, 0, 49, 44 };
+                spriteTexture = game_data.textures[4];
+                health = 4000;
+                maxHealth = 4000;
+                break;
+            default:
+                entity = { 0, 0, 20, 20 };
+                sourceRect = { 0, 0, 20, 20 };
+                spriteTexture = game_data.textures[0];
+                health = 100;
+                maxHealth = 100;
+                break;
+        }
+    }
+
+    // Update entity position data with args // Basically the same as the "PLAYER_DATA" command but made specifically for movement in case something "ENTITY_DATA" would contain something that doesn't fit the entity
+    void updateMoveData(std::vector<std::string>& args) {
+        switch (npcClass) {
+            case NPCClasses::FORUMAN:
+                if (args.size() >= 6) {
+                    //long long timeRef = stoll(args.at(0));
+                    setPos(stoi(args.at(2)), stoi(args.at(3)));
+                    setVelocity(stoi(args.at(4)) * 25, stoi(args.at(5)) * 25);
+                    //double tpf = ((timeRef - (_Xtime_get_ticks() / 10000)) / 1000.0);
+                    double tpf = ((stoll(args.at(0)) - (_Xtime_get_ticks() / 10000)) / 1000.0);
+                    if (tpf > 0.016) { // Ignore the first frame because the position data already has the first frame accounted for
+                        tpf -= 0.016;
+                        x += velocityX * tpf;
+                        y += velocityY * tpf;
+                    }
+                }
+                break;
+            default:
+                // It's hard to predict what the args might actually want without an npc class reference so I will leave this blank
+                break;
+        }
+
+    }
+
+    void update(double tpf) {
+        switch (npcClass) {
+            case NPCClasses::FORUMAN:
+                // Foruman only moves while his attacks are on cooldown, making it look like he stops to summon an attack
+                // Since attacks can only be summoned by the server to avoid RNG desync, Foruman will stand still until an attack is summoned
+                //std::cout << attackCooldown << std::endl;
+                if (attackCooldown > 0) {
+                    attackCooldown -= tpf;
+                    if (attackCooldown >= 0.5) {
+                        x += velocityX * tpf;
+                        y += velocityY * tpf;
+                    }
+                }
+                break;
+            default:
+                x += velocityX * tpf;
+                y += velocityY * tpf;
+                break;
+        }
+    }
+
+    void placeWithDelta(int deltaTime) {
+        x += velocityX * (deltaTime / 1000.0);
+        y += velocityY * (deltaTime / 1000.0);
+    }
+
+    void render(SDL_Renderer* renderer) {
+        entity.x = x;
+        entity.y = y;
+        if (spriteTexture != nullptr) {
+            SDL_RenderCopy(renderer, spriteTexture, &sourceRect, &entity);
+        }
+    }
+
 };
 
 struct ProjectileData {
@@ -258,6 +368,7 @@ struct ProjectileData {
     double rotation = 0;
     bool justAdded = true; // Notes the entity as newly created so it gets ignored on the first update call // This is there to work with the same offset created in the server, where entities created within a tick don't move until the next one is called // Could technically be false by default, but I think keeping it true will always have the intended effect. // Yeah that fixes it a little bit
     bool markedForDespawn = false; // Sets the projectile to be despawned during an update call
+    double lifetime = 30; // How long before the projectile should automatically delete itself // Default is 30 seconds to give projectiles enough time to go off screen and to match the ranger alt-fire trap duration
 
     void setPosition(int x, int y) {
         entity.x = x;
@@ -339,6 +450,12 @@ struct ProjectileData {
     }
 
     void update(double tpf) { // Update uses the same logic as placeWithDelta() but in double format for deltaTime, it also includes extra logic to help with unload checks
+
+        lifetime -= tpf;
+        if (lifetime <= 0) {
+            markedForDespawn = true;
+            return; // If the projectile runs out of time then just skip the rest of the function, it doesn't need to run.
+        }
 
         //entity.x += velocityX * tpf;
         //if (hasGravity) {

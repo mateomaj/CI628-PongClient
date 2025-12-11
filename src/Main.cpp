@@ -255,6 +255,7 @@ void loop(SDL_Renderer* renderer) {
                 //cout << "SET MESSAGE: " << tempMessage << endl;
                 //cout << "SET MESSAGE: " << bufferedUpdateMessage << endl; // The value of bufferedUpdateMessage itself is changing after the initial printout
                 game->updateSimulated(((simTime - lastReceivedTime) / 1000.0) * FRAME_RATE_MULTIPLIER, tempMessage);
+                //game->updateSimulated(((simTime - lastReceivedTime) / 1000.0) * FRAME_RATE_MULTIPLIER);
                 //free(tempMessage);
                 //bufferedUpdateMessage[0] = '\0';
             } else {

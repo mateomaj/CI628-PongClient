@@ -498,7 +498,8 @@ class MyGame {
         GameData* getGameData(); // Return a pointer instead
         void spawnAttack(std::vector<std::string>& args);
         //long getCurrentTimeMS() { return (long) (_Xtime_get_ticks() / 10000); }
-        long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); }
+        //long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); }
+        static long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); } // made it static so it can be accessed from anywhere
         void initTextures(SDL_Renderer* renderer);
         //MyGame() {
             //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::RANGER) << std::endl; // Since we can convert int to enum, we can send player class type as int/short // Since data is sent as a string, different int types don't really matter, only whole vs decimals

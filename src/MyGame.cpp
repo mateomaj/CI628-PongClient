@@ -30,10 +30,27 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         } else {
             std::cout << "BROKEN\n"; // A print just in case the concurrency bug does ever happen so I can catch at least one form of it // I think the crash happened? VS didn't tell me what it was so I'm not sure
         }
+    } else if (cmd == "EMOVE") {
+        if (args.size() >= 2) {
+            NPCData* data = game_data.npcMap[stoi(args.at(1))];
+            if (data == nullptr) return;
+            data->updateMoveData(args);
+        }
     } else if (cmd == "SATK") {
         //std::cout << args.at(3) << std::endl;
         if (args.size() >= 2) {
             spawnAttack(args);
+        }
+    } else if (cmd == "SE") { // SPAWN_ENTITY
+        if (args.size() >= 2) {
+            int id = stoi(args.at(0));
+            //NPCClasses npcClass = NPCClasses(stoi(args.at(1)));
+            game_data.npcMap[id] = new NPCData();
+            //game_data.npcMap[id]->setNPCClass(npcClass);
+            game_data.npcMap[id]->setNPCClass(NPCClasses(stoi(args.at(1))));
+            if (args.size() >= 4) {
+                game_data.npcMap[id]->setPos(stoi(args.at(2)), stoi(args.at(3)));
+            }
         }
     } else if (cmd == "NEWPLAYER") {
         //std::cout << args.size() << std::endl;
@@ -290,6 +307,13 @@ void MyGame::update(double tpf) {
     ball.y = game_data.ballY;
     */
 
+    // New - Update npcs
+    for (int id = 1; id <= game_data.npcMap.size(); id++) {
+        NPCData* data = game_data.npcMap[id];
+        if (data == nullptr) continue; // ??? - might be better than break in this case? // This version goes up to the list's size so it doesn't matter here but we still need some kind of null check just in case.
+        data->update(tpf);
+    }
+
     // New - Update projectiles
     int foundProjectiles = 0;
     if (game_data.activeProjectileCount > 0) {
@@ -316,6 +340,12 @@ void MyGame::update(double tpf) {
 }
 
 void MyGame::updateSimulated(double tpf) {
+    //std::cout << game_data.npcMap.size() << std::endl;
+    //for (int id = 1; id <= game_data.npcMap.size(); id++) {
+    //    NPCData* data = game_data.npcMap[id];
+    //    if (data == nullptr) continue; // ??? - might be better than break in this case? // This version goes up to the list's size so it doesn't matter here but we still need some kind of null check just in case.
+    //    data->update(tpf);
+    //}
     //std::cout << tpf << std::endl;
     for (int id = 1; id <= MAX_PLAYERS; id++) {
         PlayerData* data = game_data.playerMap[id];
@@ -372,7 +402,14 @@ void MyGame::updateSimulated(double tpf, char* updateMessage) {
 void MyGame::render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
-    // New - Render projectiles
+    // New - Render entities // Entities are rendered in the background so they don't cover up players and projectiles
+    for (int id = 1; id <= game_data.npcMap.size(); id++) {
+        NPCData* data = game_data.npcMap[id];
+        if (data == nullptr) continue; // ??? - might be better than break in this case? // This version goes up to the list's size so it doesn't matter here but we still need some kind of null check just in case.
+        data->render(renderer);
+    }
+
+    // New - Render projectiles // Projectiles are rendered behind the player so big projectiles don't cover them up
     int foundProjectiles = 0;
     if (game_data.activeProjectileCount > 0) {
         for (int i = 0; i < 500; i++) {
@@ -410,7 +447,9 @@ GameData* MyGame::getGameData() { // Even though it's static, I can't get the ri
 }
 
 void MyGame::spawnAttack(std::vector<std::string>& args) {
-    int id = stoi(args.at(1));
+    int entityID = stoi(args.at(1));
+    //int id = stoi(args.at(1));
+    int id = stoi(args.at(2));
     //std::cout << args.at(0) << std::endl;
     //std::cout << LONG_MAX << std::endl;
     //std::cout << INT_MAX << std::endl; // WHY THE FUCK IS INT_MAX AND LONG_MAX THE SAME NUMBER, ISN'T THE POINT OF LONG THAT IT'S BIGGER THAN INT??????????????????????? WHAT THE HELL IS A LONG LONG???????????????????????????? // https://stackoverflow.com/questions/7456902/long-vs-int-c-c-whats-the-point - some else asked the same question
@@ -424,12 +463,15 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
     switch (id) {
         case 1:
             projectileAmount = 8;
+            game_data.npcMap[entityID]->attackCooldown = 2.5; // Moved - Attack cooldown is updated here so we don't add extra delays from another switch-case
             break;
         case 2:
             projectileAmount = 7;
+            game_data.npcMap[entityID]->attackCooldown = 3;
             break;
         case 3:
             projectileAmount = 1;
+            game_data.npcMap[entityID]->attackCooldown = 5;
             break;
     }
     if (projectileAmount > 0 && game_data.activeProjectileCount <= 500 - projectileAmount) { // only spawn projectiles if the game can store them in the projectiles array
@@ -448,8 +490,10 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
                 gapWidth = 800 / projectileAmount;
                 //int spawnX = 0;
                 spawnX = 0;
-                if (args.size() >= 3) {
-                    spawnX = stoi(args.at(2)) * 15;
+                //if (args.size() >= 3) {
+                if (args.size() >= 4) {
+                    //spawnX = stoi(args.at(2)) * 15;
+                    spawnX = stoi(args.at(3)) * 15;
                 }
                 for (int i = 0; i < projectileAmount; i++) {
                     //projectilesToAdd[i]->entity.x = spawnX + i * gapWidth;
@@ -466,9 +510,12 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
                 spawnY = 0;
                 //int direction = 1;
                 direction = 1;
-                if (args.size() >= 4) {
-                    spawnY = stoi(args.at(3)) * 15;
-                    direction = stoi(args.at(2));
+                //if (args.size() >= 4) {
+                if (args.size() >= 5) {
+                    //spawnY = stoi(args.at(3)) * 15;
+                    spawnY = stoi(args.at(4)) * 15;
+                    //direction = stoi(args.at(2));
+                    direction = stoi(args.at(3));
                 }
                 for (int i = 0; i < projectileAmount; i++) {
                     projectilesToAdd[i]->setPosition(direction == 1 ? -75 : 875, spawnY + i * gapWidth);
@@ -479,13 +526,16 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
             case 3:
                 //int direction = 1;
                 direction = 1;
-                if (args.size() >= 3) {
-                    direction = stoi(args.at(2));
+                //if (args.size() >= 3) {
+                if (args.size() >= 4) {
+                    //direction = stoi(args.at(2));
+                    direction = stoi(args.at(3));
                 }
                 for (int i = 0; i < projectileAmount; i++) {
                     projectilesToAdd[i]->setPosition(direction == 1 ? -75 : 875, -800);
                     projectilesToAdd[i]->velocityX = direction * 100;
                     projectilesToAdd[i]->rotation = direction == 1 ? 0 : 180;
+                    projectilesToAdd[i]->lifetime = 6;
                 }
                 break;
         }
@@ -493,8 +543,21 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
         int timeOffset = getCurrentTimeMS() - timeRef;
         //int timeOffset = currentTime - timeRef;
         //std::cout << currentTime << " - " << timeRef << " = " <<  timeOffset << std::endl; // It's crazy to think about the time difference here being 0-2ms at most, I know this is a localHost connection but this also considers the time between the message is written, sent, received, and processed up to this point, all within milliseconds.
+        //switch (id) { // new - NPC's attack cooldown timer is updated when the attack spawns // Removed - We don't need a switch-case here when we can set the initial value in a previous one, only lag compensation is needed here
+            //case 1:
+                //game_data.npcMap[entityID]->attackCooldown = 2.5 - timeOffset / 1000.0;
+               // break;
+            //case 2:
+                //game_data.npcMap[entityID]->attackCooldown = 3 - timeOffset / 1000.0;
+                //break;
+            //case 3:
+                //game_data.npcMap[entityID]->attackCooldown = 5 - timeOffset / 1000.0;
+                //break;
+        //}
+        game_data.npcMap[entityID]->attackCooldown -= timeOffset / 1000.0;
         for (int i = 0; i < projectileAmount; i++) {
             projectilesToAdd[i]->placeWithDelta(timeOffset);
+            projectilesToAdd[i]->lifetime -= timeOffset / 1000.0;
         }
         // Yes there are concurrency issues here. But they only apply to the timing of when the projectiles are added vs when the next update will happen or is happening. In theory the only things that could happen here is not updating all new projectiles in the main loop because they haven't been added yet, and desyncing the projectiles from the server by an extra tick ahead by running update right as they are added in (which would probably align them better because of delays). The effect here is negligible so I'm not spending 2 days on trying to avoid it.
         // Also, this thread is the only place where this function is called. I plan to spawn attacks on server response so timers are easier to sync up, so the projectile list only gets filled on this thread, freeing up space can happen on either of them.
