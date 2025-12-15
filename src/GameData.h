@@ -2,6 +2,7 @@
 //#include "MyGame.h"
 #include "SDL.h"
 #include "SDL_image.h"
+#include "SDL_ttf.h"
 
 #include <iostream>
 #include <vector>
@@ -42,6 +43,8 @@ public:
     ProjectileData* projectiles[500]; // List and vector require an allocator to work with classes
     int activeProjectileCount = 0; // Number of active projectiles, used to calculate how many slots are available in the projectiles array
     std::unordered_map<int, SDL_Texture*> textures; // List of textures used within the game. Used to provide references to any existing texture without having to load it again.
+    TTF_Font* font = nullptr;
+    SDL_Color defaultFontColor = { 200, 200, 200 };
 //} game_data;
 };
 //static GameData game_data;
@@ -56,6 +59,30 @@ enum class PlayerClasses {
 //enum class NPCClasses {
 //    NONE, FORUMAN
 //};
+
+struct RechargableValue {
+    double value = 0;
+    double maxValue = 0;
+    int chargeSpeed = 1;
+    double chargeDelay = 0;
+    double chargeDelayTimer = 0;
+    void update(double tpf) {
+        if (chargeDelayTimer > 0) {
+            chargeDelayTimer -= tpf;
+        } else {
+            value = SDL_min(value + tpf * chargeSpeed, maxValue);
+        }
+    }
+    void setValue(double amount) {
+        value = SDL_min(SDL_max(amount, maxValue), 0);
+    }
+    void damage(double amount) {
+        value = SDL_max(value - amount, 0);
+    }
+    void restore(double amount) {
+        value = SDL_min(value + amount, maxValue);
+    }
+};
 
 struct PlayerData {
     PlayerClasses playerClass = PlayerClasses::NONE; // Player class reference for sprites and other values
@@ -74,6 +101,7 @@ struct PlayerData {
     int maxHealth = 100; // Mana/Stamina/Charge could be defined in a hashMap of a new struct statData with a current value and max value // This is a lot more complicated, so the first tests for replication will just rely on health // Values like damage don't need to be sent, health of relevant entities (ones with visible health bars (all of them at the moment)) will be updated via server messages so sending damage would be pointless // It does mean that when lagging, health will decrease with a delay. Fixing that would require sending in damage, and doing clientside collision handling.
     bool isReady = false;
     //bool isMe = false; // Makes this player instance stand out as THIS client's player // aka "Is that player mine?"
+    RechargableValue specialStat;
 
     // Velocity could be included later for latency simulation / switching movement to being done clientside
     //double velocityX = 0;
@@ -95,16 +123,19 @@ struct PlayerData {
             //spriteTexture = game_data.textures[1];
             health = 250;
             maxHealth = 250;
+            specialStat = { 0, 1.5, 0 }; // Might need to use a server update to manage this one // "KC" - "KNIGHT_CHARGE" // "KR"- "KNIGHT_RELEASE" // KC/R,<TimeRef>,<PlayerID>; // TODO
             break;
         case PlayerClasses::RANGER:
             //spriteTexture = game_data.textures[2];
             health = 175;
             maxHealth = 175;
+            specialStat = { 100, 100, 20, 0.75 };
             break;
         case PlayerClasses::MAGE:
             //spriteTexture = game_data.textures[3];
             health = 150;
             maxHealth = 150;
+            specialStat = { 100, 100, 15, 0.75 };
             break;
         default:
             //spriteTexture = game_data.textures[0];
@@ -139,6 +170,7 @@ struct PlayerData {
     //}
 
     void update(double tpf) {
+        specialStat.update(tpf);
         x += velocityX * tpf;
         //if (hasGravity) {
         for (; tpf > 0.016; tpf -= 0.016) {
@@ -221,6 +253,37 @@ struct PlayerData {
         }
     }
 
+    //void renderUI(SDL_Renderer* renderer, int positionX) {
+    void renderUI(SDL_Renderer* renderer, int positionX, int width) {
+        //std::cout << "Hello - " << positionX << std::endl;
+        //SDL_Rect tempRect = { positionX, 580, 100, 20 };
+        SDL_Rect tempRect = { positionX, 580, width, 20 };
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red
+        SDL_RenderFillRect(renderer, &tempRect);
+        SDL_SetRenderDrawColor(renderer, 0, 128, 0, 255); // Green
+        //tempRect.w = (health / maxHealth) * 100;
+        tempRect.w = (health / maxHealth) * width;
+        SDL_RenderFillRect(renderer, &tempRect);
+        tempRect.w = (specialStat.value / specialStat.maxValue) * width;
+        tempRect.y = 595;
+        switch (playerClass) {
+            case PlayerClasses::KNIGHT:
+                SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White
+                SDL_RenderFillRect(renderer, &tempRect);
+                break;
+            case PlayerClasses::RANGER:
+                SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Yellow
+                SDL_RenderFillRect(renderer, &tempRect);
+                break;
+            case PlayerClasses::MAGE:
+                SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); // Cyan
+                SDL_RenderFillRect(renderer, &tempRect);
+                break;
+            default:
+                break;
+        }
+    }
+
     ~PlayerData() {
         //if (spriteTexture != nullptr) SDL_DestroyTexture(spriteTexture); // Temporary, destroy the projectile's texture so it doesn't say behind in memory
         //delete& entity;
@@ -242,6 +305,7 @@ struct NPCData {
     SDL_Rect entity = { 0, 0, 20, 20 };
     SDL_Rect sourceRect = { 0, 0, 0, 0 };
     SDL_Texture* spriteTexture = nullptr;
+    char* name = "";
     double x = 0;
     double y = 0;
     double velocityX = 0;
@@ -280,6 +344,7 @@ struct NPCData {
                 spriteTexture = game_data.textures[4];
                 health = 4000;
                 maxHealth = 4000;
+                name = "Foruman - The Mortal Angel";
                 break;
             default:
                 entity = { 0, 0, 20, 20 };

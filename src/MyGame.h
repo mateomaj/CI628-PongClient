@@ -8,6 +8,7 @@
 
 #include "SDL.h"
 #include "SDL_image.h"
+#include "SDL_ttf.h"
 #include "GameData.h"
 
 //struct PlayerData;
@@ -479,6 +480,7 @@ class MyGame {
         bool quit = false;
     public:
         static const int MAX_PLAYERS = 4;
+        int playerCount = 0; // Helps reliably track the active number of players. // Updated by on_receive() so there will probably be concurrency issues // At worst, the UI will sometimes get messed up for one frame if a player leaves mid-game
         std::vector<std::string> messages;
         MyPlayerData* myPlayer = nullptr;
 
@@ -492,6 +494,7 @@ class MyGame {
         void updateSimulated(double tpf, char* updateMessage); // Simulates objects updated by the server // Reads and simulates data relative to the given update message
         //void updateSimulated(double tpf, std::string updateMessage); // Simulates objects updated by the server // Reads and simulates data relative to the given update message
         void render(SDL_Renderer* renderer);
+        void renderUI(SDL_Renderer* renderer);
         void forceQuit() { quit = true; }
         bool shouldForceQuit() { return quit; }
         //GameData getGameData();
@@ -501,10 +504,12 @@ class MyGame {
         //long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); }
         static long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); } // made it static so it can be accessed from anywhere
         void initTextures(SDL_Renderer* renderer);
+        void onShutDown();
         //MyGame() {
             //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::RANGER) << std::endl; // Since we can convert int to enum, we can send player class type as int/short // Since data is sent as a string, different int types don't really matter, only whole vs decimals
             //std::cout << "class: " << (PlayerClasses(3) == PlayerClasses::MAGE) << std::endl;
         //}
+        ~MyGame();
 };
 
 #endif

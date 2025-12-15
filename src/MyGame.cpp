@@ -16,16 +16,20 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
     } else if (cmd == "PD") { // Abbreviation
         if (args.size() == 3) {
             int id = stoi(args.at(0));
-            game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+            if (game_data.playerMap[id] != nullptr) { // New - PlayerData nullptr check // After adding the update message buffer, players can be kicked while their update data stays in the buffer // The behaviour of the crash doesn't match the problem but this check will fix this no matter what the problem is
+                game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+            }
         } else if (args.size() == 5) {
             int id = stoi(args.at(0));
-            //game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
-            //game_data.playerMap[id]->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
-            PlayerData* player = game_data.playerMap[id];
-            player->setPosition(stoi(args.at(1)), stoi(args.at(2)));
-            player->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
-            if (player != myPlayer && player->velocityX != 0) { // Other players can face towards their velocity so we won't need to store their input handlers
-                player->facingRight = player->velocityX > 0;
+            if (game_data.playerMap[id] != nullptr) {
+                //game_data.playerMap[id]->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+                //game_data.playerMap[id]->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
+                PlayerData* player = game_data.playerMap[id];
+                player->setPosition(stoi(args.at(1)), stoi(args.at(2)));
+                player->setVelocity(stoi(args.at(3)), stoi(args.at(4)));
+                if (player != myPlayer && player->velocityX != 0) { // Other players can face towards their velocity so we won't need to store their input handlers
+                    player->facingRight = player->velocityX > 0;
+                }
             }
         } else {
             std::cout << "BROKEN\n"; // A print just in case the concurrency bug does ever happen so I can catch at least one form of it // I think the crash happened? VS didn't tell me what it was so I'm not sure
@@ -57,6 +61,7 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         if (args.size() == 1) {
             game_data.playerMap[stoi(args.at(0))] = new PlayerData();
             std::cout << "NEW PLAYER ADDED\n";
+            playerCount++;
         } else if (args.size() == 2) {
             //int id = stoi(args.at(0));
             //game_data.playerMap[id] = new PlayerData();
@@ -68,6 +73,7 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
                 game_data.playerMap[stoi(args.at(0))] = new PlayerData();
                 std::cout << "NEW PLAYER ADDED\n";
             }
+            playerCount++;
         } else if (args.size() == 4) {
             if (stoi(args.at(1))) {
                 myPlayer = (MyPlayerData*)(game_data.playerMap[stoi(args.at(0))] = new PlayerData());
@@ -80,12 +86,17 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
                 game_data.playerMap[stoi(args.at(0))]->isReady = stoi(args.at(3));
                 std::cout << "NEW PLAYER ADDED\n";
             }
+            playerCount++;
         }
     } else if (cmd == "KICKPLAYER") {
         std::cout << "Kicking player ";
         if (args.size() == 1) {
             int id = stoi(args.at(0));
             std::cout << id << "\n";
+            if (game_data.playerMap[id] != nullptr) {
+                playerCount--;
+                delete game_data.playerMap[id]; // New - Delete the kicked player's reference to avoid memory leaks
+            }
             for (int i = id; i <= MAX_PLAYERS; i++) {
                 //game_data.playerMap[id] = nullptr;
                 //if (game_data.playerMap[id + 1] != nullptr) {
@@ -312,7 +323,7 @@ void MyGame::update(double tpf) {
         NPCData* data = game_data.npcMap[id];
         if (data == nullptr) continue; // ??? - might be better than break in this case? // This version goes up to the list's size so it doesn't matter here but we still need some kind of null check just in case.
         data->update(tpf);
-    }
+    } // Note - Since game_data.npcMap.size() is not reliable, we need a different method for tracking the npc count
 
     // New - Update projectiles
     int foundProjectiles = 0;
@@ -439,6 +450,65 @@ void MyGame::render(SDL_Renderer* renderer) {
     SDL_RenderDrawRect(renderer, &player2); // New - Player 2 render
     SDL_RenderFillRect(renderer, &ball);//SDL_RenderDrawRect(renderer, &ball); // New - Render ball
     */
+    renderUI(renderer);
+}
+
+// Render the UI used to show names and health/special values of players and NPCs
+void MyGame::renderUI(SDL_Renderer* renderer) {
+    int foundEntities = 0;
+    for (int id = 1; id <= game_data.npcMap.size(); id++) {
+        NPCData* data = game_data.npcMap[id];
+        if (data == nullptr) continue;
+        // (double) FXGL.getAppWidth()/bossUIContainer.getChildren().size() - bossUIContainer.getSpacing()*(1.0/bossUIContainer.getChildren().size() * (bossUIContainer.getChildren().size()-1))) - Width definition reference
+        foundEntities++;
+        //data->render(renderer);
+    }
+    if (playerCount > 0) {
+        //int sectionWidth = 800 / game_data.playerMap.size() - 5 * (1 / game_data.playerMap.size() * (game_data.playerMap.size() - 1));
+        //int sectionWidth = 800 / playerCount - 5 * (1 / playerCount * (playerCount - 1));
+        //int sectionWidth = SDL_min(160, 800 / playerCount - 5 * (1 / playerCount * (playerCount - 1)));
+        //int sectionWidth = SDL_min(180, 800 / playerCount - 5 * (1 / playerCount * (playerCount - 1)));
+        int sectionWidth = 800 / playerCount - 5 * (1 / playerCount * (playerCount - 1));
+        int maxWidth = SDL_min(180, sectionWidth); // TODO - The UI is a lot better but isn't exactly 1:1 with the server // Though this is probably good enough tbh
+        //int maxWidth = 800 / playerCount - 5 * (1 / playerCount * (playerCount - 1));
+        //int startX = 400 - (sectionWidth / 2) * playerCount;
+        int startX = 400 - (sectionWidth / 2) * playerCount;
+        //int startX = 400 - (maxWidth / 2) * playerCount;
+        //std::cout << sectionWidth << std::endl;
+        //std::cout << game_data.playerMap.size() << std::endl;
+        for (int id = 1; id <= MAX_PLAYERS; id++) {
+            PlayerData* data = game_data.playerMap[id];
+            if (data == nullptr) break;
+            //if (data == myPlayer) continue;
+            // (double) FXGL.getAppWidth()/playerUIContainer.getChildren().size() - playerUIContainer.getSpacing()*(1.0/playerUIContainer.getChildren().size() * (playerUIContainer.getChildren().size()-1))) - Width definition reference
+            // 800/game_data.playerMap.size() - 5 * (1/game_data.playerMap.size() * (game_data.playerMap.size()-1))
+            //data->render(renderer);
+            //SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red
+            //SDL_SetRenderDrawColor(renderer, 0, 128, 0, 255); // Green
+            //std::cout << (400 - sectionWidth * game_data.playerMap.size()) << std::endl;
+            //std::cout << (sectionWidth / 2 * (game_data.playerMap.size() % 2)) << std::endl;
+            //std::cout << (sectionWidth * (id - 1)) << std::endl;
+            //data->renderUI(renderer, 400 - sectionWidth * game_data.playerMap.size() + sectionWidth/2 * (game_data.playerMap.size()%2) + sectionWidth * (id-1));
+            //data->renderUI(renderer, 400 - sectionWidth / 2 * game_data.playerMap.size() + sectionWidth * (id - 1));
+            //data->renderUI(renderer, 400 - (sectionWidth / 2) * playerCount + sectionWidth * (id - 1));
+            int UIX = startX + sectionWidth * (id - 1) + sectionWidth/2 - maxWidth/2;
+            SDL_Rect textRect = { UIX, 580, 0, 0 };
+            std::string playerName = "P" + std::to_string(id);
+            //SDL_Surface* textSurface = TTF_RenderText_Blended_Wrapped(game_data.font, "P" + id, game_data.defaultFontColor, 0);
+            //SDL_Surface* textSurface = TTF_RenderText_Blended_Wrapped(game_data.font, playerName.c_str(), game_data.defaultFontColor, 0);
+            SDL_Surface* textSurface = TTF_RenderText_Blended(game_data.font, playerName.c_str(), game_data.defaultFontColor);
+            SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+            SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+            //std::cout << textRect.w << std::endl;
+            SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+            SDL_FreeSurface(textSurface);
+            SDL_DestroyTexture(textTexture);
+            //data->renderUI(renderer, startX + 32, sectionWidth - 32);
+            //data->renderUI(renderer, UIX + textRect.w, sectionWidth - textRect.h);
+            //data->renderUI(renderer, UIX + textRect.w + 5, sectionWidth - textRect.w - 5);
+            data->renderUI(renderer, UIX + textRect.w + 5, maxWidth - textRect.w - 5);
+        }
+    }
 }
 
 //GameData MyGame::getGameData() { // Even though it's static, I can't get the right instance back within GameUI
@@ -596,4 +666,22 @@ void MyGame::initTextures(SDL_Renderer* renderer) {
     tempSurface = IMG_Load("Assets/Textures/angel sword.png");
     game_data.textures[5] = SDL_CreateTextureFromSurface(renderer, tempSurface);
     SDL_FreeSurface(tempSurface);
+    TTF_Init();
+    //TTF_Font* font = TTF_OpenFont("Assets/Fonts/pong.ttf", 18);
+    game_data.font = TTF_OpenFont("Assets/Fonts/pong.ttf", 20);
+    //std::cout << "hi" << std::endl;
+}
+
+void MyGame::onShutDown() {
+    for (int id = 0; id < game_data.textures.size(); id++) {
+        if (game_data.textures[id] != nullptr) {
+            SDL_DestroyTexture(game_data.textures[id]);
+        }
+    }
+    TTF_CloseFont(game_data.font);
+    TTF_Quit();
+}
+ 
+MyGame::~MyGame() {
+    onShutDown();
 }

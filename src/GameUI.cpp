@@ -9,7 +9,9 @@ void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
         SDL_RenderFillRect(renderer, &dstRect);
 
         //PlayerData* data = game->getGameData().playerMap[id];
-        PlayerData* data = game->getGameData()->playerMap[id];
+        PlayerData* data = game->getGameData()->playerMap[id]; // Cool Note - Every time we try to read a slot within the list using array index, that checked slot gets counted when calling playerMap.size()
+        //PlayerData* data = game->getGameData()->playerMap.at(id); // ^ Trying playerMap.at() throws an out of bounds error instead of returning null
+        //std::cout << (game->getGameData()->playerMap.find(id)) << std::endl; // ^ The find() function gives a weird variable that I can't really work with // I will just have to live with the weird size increase;
         //std::cout << "nullptr? - " << id << std::endl;
         if (data == nullptr) continue;
         //std::cout << "not nullptr\n";
