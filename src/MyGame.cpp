@@ -34,16 +34,166 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         } else {
             std::cout << "BROKEN\n"; // A print just in case the concurrency bug does ever happen so I can catch at least one form of it // I think the crash happened? VS didn't tell me what it was so I'm not sure
         }
+    } else if (cmd == "PUPD") {
+        if (args.size() > 2) {
+            //std::cout << SDL_GetTicks() << std::endl;
+            int deltaTime = getCurrentTimeMS() - stoll(args.at(0));
+            int projectileID = stoi(args.at(1)) - 1;
+            int foundProjectiles = 0;
+            char* saveptr = NULL;
+            if (foundProjectiles == game_data.activeProjectileCount) return;
+            ProjectileData* data = nullptr;
+            for (int i = 2; i < args.size(); i++) {
+                for (projectileID++; projectileID < 500; projectileID++) {
+                    if ((data = game_data.projectiles[projectileID]) != nullptr) {
+                        foundProjectiles++;
+                        break;
+                    }
+                }
+                char* copy = strdup(args.at(i).c_str());
+                char* pch = strtok_s(copy, ",", &saveptr);
+                std::vector<std::string> innerArgs;
+
+                while (pch != NULL) {
+                    innerArgs.push_back(std::string(pch));
+                    pch = strtok_s(NULL, ",", &saveptr);
+                }
+                free(copy);
+                //std::cout << deltaTime << std::endl;
+                //for (int j = 0; j < innerArgs.size(); j++) {
+                //    std::cout << innerArgs.at(j) << std::endl;
+                //}
+                //std::cout << "\n";
+                //std::cout << args.at(i).length() << std::endl;
+
+                if (innerArgs.size() == 0) { // No args - delete projectile
+                    //std::cout << "Blank\n";
+                    game_data.projectiles[projectileID] = nullptr;
+                    //std::cout << "Delete - " << data << " - ";
+                    delete data;
+                    //std::cout << data << "\n";
+                    foundProjectiles--;
+                    game_data.activeProjectileCount--;
+                } else if (innerArgs.size() == 1) { // 1 arg - skip projectile update and use local data /OR/ special state character // 0 & 1 args use one char to get // Skip is useful for ranger sticky traps which stay in place once stuck
+                    //std::cout << "Single\n";
+
+                } else if (innerArgs.size() == 2) { // 2 args - update position, maintain velocity
+                    data->setPosition(stof(innerArgs.at(0)), stof(innerArgs.at(1)));
+                    data->placeWithDelta(deltaTime);
+                } else if (innerArgs.size() == 3) { // 3 args - update position & stick projectile
+                    data->setPosition(stof(innerArgs.at(1)), stof(innerArgs.at(2)));
+                    data->hasGravity = false;
+                    data->setVelocity(0, 0);
+                    //data->placeWithDelta(deltaTime);
+                } else if (innerArgs.size() == 4) { // 4 args - update position and velocity
+                    data->setPosition(stof(innerArgs.at(0)), stof(innerArgs.at(1)));
+                    data->setVelocity(stof(innerArgs.at(2)), stof(innerArgs.at(3)));
+                    data->placeWithDelta(deltaTime);
+                }
+
+                if (foundProjectiles == game_data.activeProjectileCount || projectileID == 499) {
+                    break;
+                }
+            }
+        }
     } else if (cmd == "EMOVE") {
         if (args.size() >= 2) {
             NPCData* data = game_data.npcMap[stoi(args.at(1))];
             if (data == nullptr) return;
             data->updateMoveData(args);
         }
+    }
+    else if (cmd == "UPH") { // UPH(,<id>,<newValue>,[<iFramesLeft>,]:)...,<timeRef>; // "UPDATE_PLAYER_HEALTH" // [] - Optional // ... - multiple can be added // Infinitely more complicated version of "PH" because adding a <timeRef> for each player is redundant as they should be the same
+        //for (int i = 0; i < args.size(); i++) {
+        //    std::cout << args.at(i);
+        //    if (i == args.size() - 1) {
+        //        std::cout << "\n";
+        //    }
+        //    else {
+        //        std::cout << ",";
+        //    }
+        //}
+        if (args.size() > 2) {
+            int size = args.size() - 1;
+            int deltaTime = getCurrentTimeMS() - stoll(args.at(size));
+            int index = 0;
+            while (index < size) {
+                //std::cout << args.at(index);
+                PlayerData* player = game_data.playerMap[stoi(args.at(index))];
+                if (player == nullptr) {
+                    index += 2;
+                    if (args.at(index) == ":") {
+                        index++;
+                    } else {
+                        index += 2;
+                    }
+                } else {
+                    index++;
+                    player->health = SDL_min(SDL_max(stoi(args.at(index)), 0), player->maxHealth);
+                    index++;
+                    if (args.at(index) == ":") {
+                        index++;
+                    } else {
+                        player->invincibilityTime = SDL_max(stoi(args.at(index)) - deltaTime, 0);
+                        index += 2;
+                    }
+                }
+            }
+        }
+    }
+    else if (cmd == "PH") { // "PH" - "PLAYER_HEALTH" - Implies the player's health changed to a different value
+        if (args.size() >= 2) {
+            PlayerData* player = game_data.playerMap[stoi(args.at(0))];
+            if (player == nullptr) return;
+            //std::cout << stoi(args.at(1)) << std::endl;
+            player->health = SDL_min(SDL_max(stoi(args.at(1)), 0), player->maxHealth);
+            if (args.size() == 4) {
+                // TODO - Add a way of applying i-frames
+                player->invincibilityTime = SDL_max(stoi(args.at(2)), 0) - (getCurrentTimeMS() - stoll(args.at(3)));
+            }
+        }
+    } else if (cmd == "PS") { // "PS" - "PLAYER_SPECIAL" // PS,<playerID>,<newValue>(,<timeRef>);
+        if (args.size() >= 2) {
+            PlayerData* player = game_data.playerMap[stoi(args.at(0))];
+            if (player == nullptr) return;
+            //std::cout << args.at(1) << ", " << stoi(args.at(1)) << ", " << stof(args.at(1)) << ", " << stod(args.at(1)) << std::endl;
+            player->specialStat.setValue(stod(args.at(1)));
+            if (args.size() == 3) {
+                player->specialStat.chargeDelayTimer = player->specialStat.chargeDelay - (getCurrentTimeMS() - stoll(args.at(2))) / 1000.0;
+            }
+        }
+    } else if (cmd == "PA") {
+        if (args.size() >= 2) {
+            spawnPlayerAttack(args);
+        }
     } else if (cmd == "SATK") {
         //std::cout << args.at(3) << std::endl;
         if (args.size() >= 2) {
             spawnAttack(args);
+        }
+    }
+    else if (cmd == "KC") { // "KNIGHT_CHARGE" - Notifies that a knight started charging // KC,<playerID>,<timeRef>;
+        if (args.size() == 2) {
+            PlayerData* player = game_data.playerMap[stoi(args.at(0))];
+            if (player == nullptr) return;
+            player->specialStat.chargeSpeed = 1;
+            player->specialStat.update(SDL_max(getCurrentTimeMS() - stoll(args.at(1)) - 16, 0) / 1000.0);
+            if (player->meleeAttack != nullptr) {
+                player->meleeAttack->assumeDespawn = true; // New - KC now marks the knight's melee attack for despawn if it somehow hasn't despawned on its own yet.
+            }
+        }
+    } else if (cmd == "KR") { // "KNIGHT_RELEASE" - Notifies that a knight stopped charging // KR,<playerID> // Not charging != heavy attack BUT heavy attack == not charging // local player can technically work without this but it's needed for other players
+        if (args.size() == 1) {
+            PlayerData* player = game_data.playerMap[stoi(args.at(0))];
+            if (player == nullptr) return;
+            player->specialStat.chargeSpeed = 0;
+            player->specialStat.setValue(0);
+        }
+    } else if (cmd == "EH") { // ENTITY_HEALTH - EH,<ID>,<Value>;
+        if (args.size() == 2) {
+            NPCData* npc = game_data.npcMap[stoi(args.at(0))];
+            if (npc == nullptr) return;
+            npc->health = stoi(args.at(1));
         }
     } else if (cmd == "SE") { // SPAWN_ENTITY
         if (args.size() >= 2) {
@@ -133,6 +283,21 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
         std::cout << "THE GAME SHOULD END NOW BOOOOOOOOOOOOOOOOOOOOOOOOOO\n";
         game_data.setReady(false);
         game_data.setRunning(false);
+        for (int i = 0; i < 500; i++) {
+            ProjectileData* data = game_data.projectiles[i];
+            if (data != nullptr) {
+                game_data.projectiles[i] = nullptr;
+                delete data;
+            }
+        }
+        for (int id = 1; id <= MAX_PLAYERS; id++) {
+            PlayerData* data = game_data.playerMap[id];
+            if (data == nullptr) break;
+            //data->health = data->maxHealth;
+            PlayerClasses playerClass = data->playerClass;
+            data->setPlayerClass(PlayerClasses::NONE);
+            data->setPlayerClass(playerClass);
+        }
     } else if (cmd == "EXIT") {
         std::cout << "PLAYER LOBBY IS FULL OR GAME SESSION IS ACTIVE\n";
         // Despawn everything I guess
@@ -200,6 +365,11 @@ void MyGame::input(SDL_Event& event) {
             break;*/
         case SDLK_ESCAPE: // Ignore escape input as using it to close the program takes priority
             break;
+        case SDLK_h:
+            if (myPlayer->playerClass == PlayerClasses::KNIGHT && event.type == SDL_KEYUP) {
+                myPlayer->specialStat.chargeSpeed = 0;
+                myPlayer->specialStat.setValue(0);
+            }
         default:
             /*
             if (event.type == SDL_KEYDOWN) {
@@ -331,7 +501,7 @@ void MyGame::update(double tpf) {
         for (int i = 0; i < 500; i++) {
             if (game_data.projectiles[i] != nullptr) {
                 if (!game_data.projectiles[i]->justAdded) {
-                    game_data.projectiles[i]->update(tpf);
+                    if (!game_data.projectiles[i]->assumeDespawn) game_data.projectiles[i]->update(tpf);
                     if (game_data.projectiles[i]->markedForDespawn) {
                         delete game_data.projectiles[i];
                         //free(game_data.projectiles[i]); https://www.quora.com/Why-does-C-use-free-instead-of-delete-to-deallocate-memory-allocated-by-new - Looks like delete is the better keyword to use when it comes to deleting 'new' instances
@@ -348,6 +518,12 @@ void MyGame::update(double tpf) {
             }
         }
     }
+
+    for (int id = 1; id <= MAX_PLAYERS; id++) {
+        PlayerData* data = game_data.playerMap[id];
+        if (data == nullptr) break;
+        data->update(tpf);
+    }
 }
 
 void MyGame::updateSimulated(double tpf) {
@@ -361,7 +537,8 @@ void MyGame::updateSimulated(double tpf) {
     for (int id = 1; id <= MAX_PLAYERS; id++) {
         PlayerData* data = game_data.playerMap[id];
         if (data == nullptr) break;
-        data->update(tpf);
+        //data->update(tpf);
+        data->simUpdate(tpf);
         //std::cout << data->entity.y << std::endl;
         //data->setSimOffsets(data->velocityX * tpf, data->velocityY * tpf);
     }
@@ -374,6 +551,7 @@ void MyGame::updateSimulated(double tpf, char* updateMessage) {
     
     // Handle the given update message as you would in onReceive(), and then update simulated as normal
 
+    //std::cout << tpf << std::endl;
     std::string cmd = "";
 
     char* outer_saveptr = NULL;
@@ -425,7 +603,7 @@ void MyGame::render(SDL_Renderer* renderer) {
     if (game_data.activeProjectileCount > 0) {
         for (int i = 0; i < 500; i++) {
             if (game_data.projectiles[i] != nullptr) {
-                game_data.projectiles[i]->render(renderer);
+                if (!game_data.projectiles[i]->assumeDespawn) game_data.projectiles[i]->render(renderer);
                 foundProjectiles++;
                 if (foundProjectiles >= game_data.activeProjectileCount) break; // stop searching if all known projectiles are seen
             }
@@ -455,14 +633,33 @@ void MyGame::render(SDL_Renderer* renderer) {
 
 // Render the UI used to show names and health/special values of players and NPCs
 void MyGame::renderUI(SDL_Renderer* renderer) {
-    int foundEntities = 0;
-    for (int id = 1; id <= game_data.npcMap.size(); id++) {
-        NPCData* data = game_data.npcMap[id];
-        if (data == nullptr) continue;
-        // (double) FXGL.getAppWidth()/bossUIContainer.getChildren().size() - bossUIContainer.getSpacing()*(1.0/bossUIContainer.getChildren().size() * (bossUIContainer.getChildren().size()-1))) - Width definition reference
-        foundEntities++;
-        //data->render(renderer);
+    // Until I rework how bosses are stored to allow multiple bosses to exist at once, I will just add add support for one boss UI
+    if (game_data.npcMap[1] != nullptr) {
+        NPCData* npc = game_data.npcMap[1];
+        SDL_Rect textRect = { 0, 0, 0, 0 };
+        SDL_Surface* textSurface = TTF_RenderText_Blended(game_data.font, npc->name, game_data.defaultFontColor);
+        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+        textRect.x = 400 - textRect.w / 2.0;
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+        textRect = { 0, textRect.h, 800, 20 };
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red
+        SDL_RenderFillRect(renderer, &textRect);
+        SDL_SetRenderDrawColor(renderer, 0, 128, 0, 255); // Green
+        textRect.w = (npc->health / (double)npc->maxHealth) * 800;
+        SDL_RenderFillRect(renderer, &textRect);
     }
+
+    //int foundEntities = 0;
+    //for (int id = 1; id <= game_data.npcMap.size(); id++) {
+    //    NPCData* data = game_data.npcMap[id];
+    //    if (data == nullptr) continue;
+    //    // (double) FXGL.getAppWidth()/bossUIContainer.getChildren().size() - bossUIContainer.getSpacing()*(1.0/bossUIContainer.getChildren().size() * (bossUIContainer.getChildren().size()-1))) - Width definition reference
+    //    foundEntities++;
+    //    //data->render(renderer);
+    //}
     if (playerCount > 0) {
         //int sectionWidth = 800 / game_data.playerMap.size() - 5 * (1 / game_data.playerMap.size() * (game_data.playerMap.size() - 1));
         //int sectionWidth = 800 / playerCount - 5 * (1 / playerCount * (playerCount - 1));
@@ -602,7 +799,9 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
                     direction = stoi(args.at(3));
                 }
                 for (int i = 0; i < projectileAmount; i++) {
-                    projectilesToAdd[i]->setPosition(direction == 1 ? -75 : 875, -800);
+                    //projectilesToAdd[i]->setPosition(direction == 1 ? -75 : 875, -800);
+                    projectilesToAdd[i]->pivotY = -1200; // OG - -1100
+                    projectilesToAdd[i]->setPosition(direction == 1 ? -75 : 875, 300);
                     projectilesToAdd[i]->velocityX = direction * 100;
                     projectilesToAdd[i]->rotation = direction == 1 ? 0 : 180;
                     projectilesToAdd[i]->lifetime = 6;
@@ -645,6 +844,79 @@ void MyGame::spawnAttack(std::vector<std::string>& args) {
     //delete[] projectilesToAdd; // Delete the projectiles array as we don't need it
 }
 
+void MyGame::spawnPlayerAttack(std::vector<std::string>& args) {
+    int playerID = stoi(args.at(0));
+    PlayerData* player = game_data.playerMap[playerID];
+    if (player == nullptr || game_data.activeProjectileCount >= 500) return;
+    long long timeRef = getCurrentTimeMS() - stoll(args.at(1));
+    ProjectileData* playerProjectile = nullptr;
+    if (player->playerClass == PlayerClasses::KNIGHT && args.size() >= 4) {
+        player->specialStat.setValue(0);
+        int angle = stoi(args.at(3));
+        if (stoi(args.at(2)) == 0) {
+            playerProjectile = new ProjectileData(4);
+        } else {
+            playerProjectile = new ProjectileData(5);
+        }
+        playerProjectile->rotation = angle;
+        playerProjectile->bindX = &player->x;
+        playerProjectile->bindY = &player->y;
+        if (angle == 90) { // down
+            playerProjectile->x = (20 - playerProjectile->entity.w) / 2.0;
+            playerProjectile->y = playerProjectile->entity.w/2.0 - playerProjectile->entity.h/2.0 + 25;
+        } else if (angle == 180) { // left
+            playerProjectile->x = -(playerProjectile->entity.w + 5);
+            playerProjectile->y = (20 - playerProjectile->entity.h) / 2.0;
+        } else if (angle == -90) { // up
+            playerProjectile->x = (20 - playerProjectile->entity.w) / 2.0;
+            playerProjectile->y = -playerProjectile->entity.w / 2.0 - playerProjectile->entity.h / 2.0 - 5;
+        } else { // right
+            playerProjectile->x = 25;
+            playerProjectile->y = (20 - playerProjectile->entity.h) / 2.0;
+        }
+    } else if (player->playerClass == PlayerClasses::RANGER && args.size() >= 5) { // Cool note - While testing the ranger, there were two instances where I shot a sword instead of an arrow. This sword came from an existing attack and somehow swapped places with the arrow; the sword shot from the player's position in the proper direction while the arrow fell in the sword's place while still being affected by gravity, teleporting back every projectile update. The two projectiles swapped places in the list order and received the update data from the other projectile. The projectile spawn order is handled on a single thread clientside so two spawn functions can't run at the same time; this problem comes from the server's projectile list. The server receives messages from clients on a separate thread which means that player input handling can clash with the main update thread. If the player fires a projectile while the server is in the middle of spawning an attack pattern, both threads would be accessing the addToProjectiles() function at the same time. Making addToProjectiles() synchronized should fix the problem, but this is still a really cool bug to find. // Turns out that wasn't it at all. ErrorHandler used to send messages in a FIFO structure so the client was receiving projectile spawn data in reverse order if multiple are created on the same frame.
+        int directionX = stoi(args.at(3));
+        int directionY = stoi(args.at(4));
+        double h = hypot(directionX, directionY);
+        if (stoi(args.at(2)) == 0) {
+            playerProjectile = new ProjectileData(6);
+            playerProjectile->setVelocity((directionX / h) * 250, (directionY / h) * 250);
+        } else {
+            playerProjectile = new ProjectileData(7);
+            playerProjectile->setVelocity((directionX / h) * 200, (directionY / h) * 200);
+        }
+        //playerProjectile->rotation = SDL_atan2(playerProjectile->velocityY, playerProjectile->velocityX) * 180 / 3.14;
+        playerProjectile->setPosition(player->x, player->y); // Placeholder - Spawn at player position. The projectiles will self-correct on the next PUPD call
+    } else if (player->playerClass == PlayerClasses::MAGE && args.size() >= 5) {
+        player->specialStat.setValue(stod(args.at(4)));
+        player->specialStat.chargeDelayTimer = player->specialStat.chargeDelay - timeRef / 1000.0;
+        int directionX = stoi(args.at(2));
+        int directionY = stoi(args.at(3));
+        playerProjectile = new ProjectileData(8);
+        double h = hypot(directionX, directionY);
+        playerProjectile->setVelocity((directionX / h) * 250, (directionY / h) * 250);
+        playerProjectile->setPosition(player->x, player->y); // Placeholder - Spawn at player position. The projectiles will self-correct on the next PUPD call
+    }
+    if (playerProjectile == nullptr) return;
+    playerProjectile->lifetime -= timeRef / 1000.0;
+    if (player->playerClass == PlayerClasses::KNIGHT) {
+        if (player->meleeAttack != nullptr) {
+            delete player->meleeAttack; // This shouldn't happen at all but it solves a memory leak.
+            player->meleeAttack = nullptr; // If this ever calls it might cause a concurrency error where the projectile is deleted twice. This line hopefully lowers the chance of that
+        }
+        player->meleeAttack = playerProjectile;
+    } else {
+        playerProjectile->placeWithDelta(timeRef);
+        for (int i = 0; i < 500; i++) {
+            if (game_data.projectiles[i] == nullptr) {
+                game_data.projectiles[i] = playerProjectile;
+                game_data.activeProjectileCount++;
+                break;
+            }
+        }
+    }
+}
+
 // Create texture references for all relevant sprites within the asset folder and store them under a sprite ID
 // For the sake of knowing exactly what ID belongs to which texture, these references will be defined manually
 void MyGame::initTextures(SDL_Renderer* renderer) {
@@ -665,6 +937,21 @@ void MyGame::initTextures(SDL_Renderer* renderer) {
     SDL_FreeSurface(tempSurface);
     tempSurface = IMG_Load("Assets/Textures/angel sword.png");
     game_data.textures[5] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/sword.png");
+    game_data.textures[6] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/super sword.png");
+    game_data.textures[7] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/arrow.png");
+    game_data.textures[8] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/spike trap.png");
+    game_data.textures[9] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/fireball.png");
+    game_data.textures[10] = SDL_CreateTextureFromSurface(renderer, tempSurface);
     SDL_FreeSurface(tempSurface);
     TTF_Init();
     //TTF_Font* font = TTF_OpenFont("Assets/Fonts/pong.ttf", 18);

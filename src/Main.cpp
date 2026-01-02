@@ -116,12 +116,22 @@ static int on_receive(void* socket_ptr) {
             // then get the arguments to the command
             vector<string> args;
 
-            while (pch != NULL) {
-                //pch = strtok(NULL, ",");
-                pch = strtok_s(NULL, ",", &inner_saveptr);
-                //cout << "3 - " << bufferedUpdateMessage << endl;
-                if (pch != NULL) {
-                    args.push_back(string(pch));
+            if (cmd == "PUPD") { // new - projectile update alternate data format
+                //vector<string> pdArgs;
+                while (pch != NULL) {
+                    pch = strtok_s(NULL, ":", &inner_saveptr);
+                    if (pch != NULL) {
+                        args.push_back(string(pch));
+                    }
+                }
+            } else {
+                while (pch != NULL) {
+                    //pch = strtok(NULL, ",");
+                    pch = strtok_s(NULL, ",", &inner_saveptr);
+                    //cout << "3 - " << bufferedUpdateMessage << endl;
+                    if (pch != NULL) {
+                        args.push_back(string(pch));
+                    }
                 }
             }
             //cout << "4 - " << bufferedUpdateMessage << endl;
@@ -186,6 +196,7 @@ void loop(SDL_Renderer* renderer) {
     SDL_Event event;
 
     const int frameDelay = 1000 / 60;
+    //const int frameDelay = 1000 / 60 * FRAME_RATE_MULTIPLIER;
 
     int frameStart, frameTime, lastUpdateTime; // LastUpdateTime - time since the last update was called
 
@@ -254,7 +265,13 @@ void loop(SDL_Renderer* renderer) {
                 //settingBufferedUpdateMessage = false;
                 //cout << "SET MESSAGE: " << tempMessage << endl;
                 //cout << "SET MESSAGE: " << bufferedUpdateMessage << endl; // The value of bufferedUpdateMessage itself is changing after the initial printout
-                game->updateSimulated(((simTime - lastReceivedTime) / 1000.0) * FRAME_RATE_MULTIPLIER, tempMessage);
+                //game->updateSimulated(((simTime - lastReceivedTime) / 1000.0) * FRAME_RATE_MULTIPLIER, tempMessage);
+                
+                // I know why updateSimulated() doesn't run as smoothly as update() - simulated time is completely different from update time and should be handled differently
+                // simTime is based on the last time an update message was received or the last time the function was ran if there is no update message
+                // Since simTime is meant to be relative to the update message, we can't apply the framerate multiplier onto it because that's not affected by refresh rate
+                // ^ We still need to do it when simulating without an update message because that runs with the exact same context as normal update()
+                game->updateSimulated(((simTime - lastReceivedTime) / 1000.0), tempMessage);
                 //game->updateSimulated(((simTime - lastReceivedTime) / 1000.0) * FRAME_RATE_MULTIPLIER);
                 //free(tempMessage);
                 //bufferedUpdateMessage[0] = '\0';

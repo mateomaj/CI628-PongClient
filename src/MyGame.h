@@ -500,6 +500,7 @@ class MyGame {
         //GameData getGameData();
         GameData* getGameData(); // Return a pointer instead
         void spawnAttack(std::vector<std::string>& args);
+        void spawnPlayerAttack(std::vector<std::string>& args);
         //long getCurrentTimeMS() { return (long) (_Xtime_get_ticks() / 10000); }
         //long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); }
         static long long getCurrentTimeMS() { return (_Xtime_get_ticks() / 10000); } // made it static so it can be accessed from anywhere
