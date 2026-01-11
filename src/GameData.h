@@ -17,6 +17,14 @@
 //
 // Like mentioned in my git commit for this change, this fix is technically pointless as game_data could be a variable within the MyGame class instead of keeping it within global scope. Since using global variables isn't recommended, I will probably revert this back into MyGame.h at some point.
 
+struct PlayerGameData {
+    bool slotActive = false;
+    int id = 0;
+    int health = 0;
+    int maxHealth = 0;
+    SDL_Texture* sprite = nullptr;
+};
+
 struct PlayerData;
 struct MyPlayerData;
 struct NPCData;
@@ -46,6 +54,9 @@ public:
     std::unordered_map<int, SDL_Texture*> textures; // List of textures used within the game. Used to provide references to any existing texture without having to load it again.
     TTF_Font* font = nullptr;
     SDL_Color defaultFontColor = { 200, 200, 200 };
+    int roundDuration;
+    bool partyWon = false;
+    PlayerGameData endData[4];
 //} game_data;
 };
 //static GameData game_data;
@@ -440,12 +451,18 @@ struct PlayerData {
     //}
 
     void update(double tpf) {
-        specialStat.update(tpf);
+        if (health > 0) { // Don't update special stats while dead
+            specialStat.update(tpf);
+        }
         if (invincibilityTime > 0) {
             invincibilityTime = SDL_max(invincibilityTime - tpf * 1000, 0); // Limit it to 0 at lowest
         }
         if (meleeAttack != nullptr) {
-            meleeAttack->update(tpf);
+            if (health > 0) {
+                meleeAttack->update(tpf);
+            } else {
+                meleeAttack->assumeDespawn = true; // Despawn the melee attack if the knight dies
+            }
             if (meleeAttack->assumeDespawn) { // Outside of "KNIGHT_CHARGE", the server doesn't send hints about melee attacks despawning. This means the attack can be deleted when it times out on the client, "KC" can force it to despawn if it hasn't already but it should have already timed out by the time the message gets there.
                 delete meleeAttack;
                 meleeAttack = nullptr;
@@ -540,7 +557,15 @@ struct PlayerData {
         if (spriteTexture != nullptr) {
             if (invincibilityTime == 0 || invincibilityTime % 333 < invincibilityTime % 666) {
                 SDL_Rect srcRect = { 0, 0, 20, 20 };
-                SDL_RenderCopyEx(renderer, spriteTexture, &srcRect, &getRect(), 0, nullptr, facingRight ? SDL_RendererFlip::SDL_FLIP_NONE : SDL_RendererFlip::SDL_FLIP_HORIZONTAL);
+                SDL_Rect dstRect = getRect();
+                //SDL_RenderCopyEx(renderer, spriteTexture, &srcRect, &getRect(), 0, nullptr, facingRight ? SDL_RendererFlip::SDL_FLIP_NONE : SDL_RendererFlip::SDL_FLIP_HORIZONTAL);
+                //SDL_RenderCopyEx(renderer, spriteTexture, &srcRect, &getRect(), health > 0 ? 0 : 90, nullptr, facingRight ? SDL_RendererFlip::SDL_FLIP_NONE : SDL_RendererFlip::SDL_FLIP_HORIZONTAL); // Rotate 90 degrees if the player is dead
+                if (health > 0) {
+                    SDL_RenderCopyEx(renderer, spriteTexture, &srcRect, &dstRect, 0, nullptr, facingRight ? SDL_RendererFlip::SDL_FLIP_NONE : SDL_RendererFlip::SDL_FLIP_HORIZONTAL);
+                } else {
+                    dstRect.y += 10;
+                    SDL_RenderCopyEx(renderer, spriteTexture, &srcRect, &dstRect, 90, nullptr, facingRight ? SDL_RendererFlip::SDL_FLIP_NONE : SDL_RendererFlip::SDL_FLIP_HORIZONTAL);
+                }
             }
         }
         if (meleeAttack != nullptr && !meleeAttack->assumeDespawn) {

@@ -65,7 +65,7 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
                 //}
                 //std::cout << "\n";
                 //std::cout << args.at(i).length() << std::endl;
-
+                data->assumeDespawn = false; // If mentioned in the list, turn off assume despawn
                 if (innerArgs.size() == 0) { // No args - delete projectile
                     //std::cout << "Blank\n";
                     game_data.projectiles[projectileID] = nullptr;
@@ -136,6 +136,10 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
                     } else {
                         player->invincibilityTime = SDL_max(stoi(args.at(index)) - deltaTime, 0);
                         index += 2;
+                    }
+                    if (player->health == 0) {
+                        player->invincibilityTime = 0;
+                        player->specialStat.setValue(0);
                     }
                 }
             }
@@ -290,13 +294,27 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
                 delete data;
             }
         }
+        for (int id = 0; id < MAX_PLAYERS; id++) {
+            game_data.endData[id].slotActive = false;
+        }
         for (int id = 1; id <= MAX_PLAYERS; id++) {
             PlayerData* data = game_data.playerMap[id];
             if (data == nullptr) break;
             //data->health = data->maxHealth;
+            game_data.endData[id - 1].slotActive = true;
+            game_data.endData[id - 1].health = data->health;
+            game_data.endData[id - 1].maxHealth = data->maxHealth;
+            game_data.endData[id - 1].sprite = data->spriteTexture;
+            data->facingRight = true; // Players face to the right by default when spawning in. This sets them up for the next round.
             PlayerClasses playerClass = data->playerClass;
             data->setPlayerClass(PlayerClasses::NONE);
             data->setPlayerClass(playerClass);
+        }
+        if (args.size() == 2) {
+            game_data.partyWon = stoi(args.at(0)) != 0;
+            game_data.roundDuration = stoi(args.at(1));
+        } else {
+            game_data.partyWon = false;
         }
     } else if (cmd == "EXIT") {
         std::cout << "PLAYER LOBBY IS FULL OR GAME SESSION IS ACTIVE\n";
@@ -382,8 +400,8 @@ void MyGame::input(SDL_Event& event) {
                     break;
                 }
             }*/
-            
-            switch (event.key.keysym.sym) { // VERY BASIC TURN AROUND HANDLE // TODO - IMPROVE
+            if (myPlayer->health > 0) { // If client player is dead, disable turning around
+                switch (event.key.keysym.sym) { // VERY BASIC TURN AROUND HANDLE // TODO - IMPROVE
                 case SDLK_a:
                     if (event.type == SDL_KEYDOWN) {
                         myPlayer->facingRight = false;
@@ -402,6 +420,7 @@ void MyGame::input(SDL_Event& event) {
                         myPlayer->facingRight = !myPlayer->isHoldingLeft;
                     }
                     break;
+                }
             }
             
             //char kms[1] = { (char)event.key.keysym.sym };
@@ -590,6 +609,8 @@ void MyGame::updateSimulated(double tpf, char* updateMessage) {
 
 void MyGame::render(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect background = { 0, 0, 800, 600 };
+    SDL_RenderCopy(renderer, game_data.textures[11], &background, &background);
 
     // New - Render entities // Entities are rendered in the background so they don't cover up players and projectiles
     for (int id = 1; id <= game_data.npcMap.size(); id++) {
@@ -953,10 +974,17 @@ void MyGame::initTextures(SDL_Renderer* renderer) {
     tempSurface = IMG_Load("Assets/Textures/fireball.png");
     game_data.textures[10] = SDL_CreateTextureFromSurface(renderer, tempSurface);
     SDL_FreeSurface(tempSurface);
+    tempSurface = IMG_Load("Assets/Textures/stage v3.png");
+    game_data.textures[11] = SDL_CreateTextureFromSurface(renderer, tempSurface);
+    SDL_FreeSurface(tempSurface);
     TTF_Init();
     //TTF_Font* font = TTF_OpenFont("Assets/Fonts/pong.ttf", 18);
     game_data.font = TTF_OpenFont("Assets/Fonts/pong.ttf", 20);
     //std::cout << "hi" << std::endl;
+
+    for (int id = 0; id < MAX_PLAYERS; id++) {
+        game_data.endData->id = id + 1;
+    }
 }
 
 void MyGame::onShutDown() {

@@ -117,6 +117,177 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
 
 void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
     // Simple text prompt displaying game data
+    SDL_Rect textRect = { 0, 40, 0, 0 };
+    std::string text = "GAME OVER";
+    SDL_Surface* textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    textRect.x = 400 - textRect.w / 2;
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+    textRect = { 0, 80, 0, 0 };
+    if (game->getGameData()->partyWon) {
+        text = "Your party defeated the boss in battle!";
+    } else {
+        text = "Your party was defeated by the boss!";
+    }
+
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    textRect.x = 400 - textRect.w / 2;
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 0, 350, 0, 0 };
+    SDL_Rect srcRect = { 0, 0, 20, 20 };
+    for (int id = 1; id <= game->MAX_PLAYERS; id++) {
+        SDL_Rect dstRect = { 210 + (id - 1) * 100, 260, 80, 80 };
+        SDL_SetRenderDrawColor(renderer, 120, 120, 120, 255);
+        SDL_RenderFillRect(renderer, &dstRect);
+
+        PlayerGameData* data = &(game->getGameData()->endData[id-1]);
+
+        if (!data->slotActive) continue;
+        if (data->health == 0) {
+            dstRect.x += 2;
+            dstRect.y += 10;
+            if (data->sprite != nullptr) {
+                SDL_RenderCopyEx(renderer, data->sprite, &srcRect, &dstRect, 90, nullptr, SDL_RendererFlip::SDL_FLIP_NONE);
+            }
+            
+            text = "DEAD";
+            textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+            textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+            SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+            textRect.x = 250 + (id - 1) * 100 - textRect.w / 2;
+            SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+            SDL_FreeSurface(textSurface);
+            SDL_DestroyTexture(textTexture);
+        } else {
+            if (data->sprite != nullptr) {
+                SDL_RenderCopy(renderer, data->sprite, &srcRect, &dstRect);
+            }
+            text = std::to_string(data->health) + "/" + std::to_string(data->maxHealth) + "HP";
+            textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+            textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+            SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+            textRect.x = 250 + (id - 1) * 100 - textRect.w / 2;
+            SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+            SDL_FreeSurface(textSurface);
+            SDL_DestroyTexture(textTexture);
+        }
+    }
+    float healthRank = 0; // % Overall health of the party
+    if (game->getGameData()->partyWon) {
+        textRect = { 0, 400, 0, 0 };
+        int totalMaxHealth = 0;
+        int totalHealth = 0;
+        for (int id = 0; id < game->MAX_PLAYERS; id++) {
+            if (game->getGameData()->endData[id].slotActive) {
+                totalHealth += game->getGameData()->endData[id].health;
+                totalMaxHealth += game->getGameData()->endData[id].maxHealth;
+            }
+        }
+        healthRank = (static_cast<float>(totalHealth) / static_cast<float>(totalMaxHealth)) * 100;
+        text = "Party Health: " + std::to_string(totalHealth) + "/" + std::to_string(totalMaxHealth) + "HP";
+        textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+        textRect.x = 400 - textRect.w / 2;
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+        textRect = { 0, 430, 0, 0 };
+    } else {
+        textRect = { 0, 400, 0, 0 };
+    }
+    int minutes = game->getGameData()->roundDuration / 60;
+    int seconds = game->getGameData()->roundDuration % 60;
+    std::string tMinutes;
+    std::string tSeconds;
+    if (minutes < 10) {
+        tMinutes = "0" + std::to_string(minutes);
+    } else {
+        tMinutes = std::to_string(minutes);
+    }
+    if (seconds < 10) {
+        tSeconds = "0" + std::to_string(seconds);
+    }
+    else {
+        tSeconds = std::to_string(seconds);
+    }
+    if (game->getGameData()->partyWon) {
+        text = "Time: " + tMinutes + ":" + tSeconds;
+    }
+    else {
+        text = "Time Survived: " + tMinutes + ":" + tSeconds;
+    }
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    textRect.x = 400 - textRect.w / 2;
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+    if (game->getGameData()->partyWon) {
+        textRect = { 0, 480, 0, 0 };
+        text = "Health Rank: ";
+        if (healthRank >= 90) {
+            text += "S";
+        } else if (healthRank >= 70) {
+            text += "A";
+        } else if (healthRank >= 50) {
+            text += "B";
+        } else if (healthRank >= 30) {
+            text += "C";
+        } else if (healthRank >= 15) {
+            text += "D";
+        } else {
+            text += "F";
+        }
+        textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+        textRect.x = 400 - textRect.w / 2;
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+
+        textRect = { 0, 510, 0, 0 };
+        text = "Time Rank: ";
+        if (game->getGameData()->roundDuration <= 60) {
+            text += "S";
+        } else if (game->getGameData()->roundDuration <= 75) {
+            text += "A";
+        } else if (game->getGameData()->roundDuration <= 90) {
+            text += "B";
+        } else if (game->getGameData()->roundDuration <= 120) {
+            text += "C";
+        } else if (game->getGameData()->roundDuration <= 150) {
+            text += "D";
+        } else {
+            text += "F";
+        }
+        textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+        textRect.x = 400 - textRect.w / 2;
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+    }
+    textRect = { 0, 560, 0, 0 };
+    text = "Press any button to continue";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    textRect.x = 400 - textRect.w / 2;
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
 }
 
 bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
@@ -124,6 +295,7 @@ bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
 
     const int frameDelay = 1000 / 60;
     int frameStart, frameTime;
+    int closeDelay = SDL_GetTicks() + 1500;
     while (true) {//while (is_running) {
         if (game->shouldForceQuit()) return 0;
         //std::cout << is_running << std::endl;
@@ -138,7 +310,9 @@ bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
                     return false;
                     break;
                 default:
-                    return true;
+                    if (SDL_GetTicks() > closeDelay) { // new - 1.5s delay before you can close the end screen
+                        return true;
+                    }
                     break;
                 }
             }
