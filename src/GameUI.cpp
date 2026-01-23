@@ -1,5 +1,4 @@
 #include "GameUI.h"
-//#include "Main.cpp"
 
 void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
     SDL_Rect srcRect = { 0, 0, 20, 20 };
@@ -8,24 +7,17 @@ void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
         SDL_SetRenderDrawColor(renderer, 120, 120, 120, 255);
         SDL_RenderFillRect(renderer, &dstRect);
 
-        //PlayerData* data = game->getGameData().playerMap[id];
         PlayerData* data = game->getGameData()->playerMap[id]; // Cool Note - Every time we try to read a slot within the list using array index, that checked slot gets counted when calling playerMap.size()
         //PlayerData* data = game->getGameData()->playerMap.at(id); // ^ Trying playerMap.at() throws an out of bounds error instead of returning null
-        //std::cout << (game->getGameData()->playerMap.find(id)) << std::endl; // ^ The find() function gives a weird variable that I can't really work with // I will just have to live with the weird size increase;
-        //std::cout << "nullptr? - " << id << std::endl;
+
         if (data == nullptr) continue;
-        //std::cout << "not nullptr\n";
 
-        //data->checkTexture(renderer); // The context where a function is called for the first time defines which context's global variables that function is allowed to use. Because checkTexture is called here first, it makes all future calls of it reference GameUI's game_data global variable instead of the one present in MyGame.h, WHAT A FUCKING JOKE, no wonder I couldn't see anything wrong with this, because this bullshit exists
-        // I don't want to swear too much in these comments because they get saved in commit history but how the hell am I not meant to crash out when every time I write two lines of code I run into the most bullshit c++ quirk I've ever seen in my life that makes me get stuck trying to fix it for two day minimum. This project should have been done at this point but it's random garbage like this that keeps ruining my sleep schedule because what do you mean a function's global scope is based on which file it was called from first... why is it like that? I can see some cool stuff being done with it but it only gets in the way.
-
-        data->checkTexture(renderer);
+        data->checkTexture();
         if (data->spriteTexture != nullptr) {
             SDL_RenderCopy(renderer, data->spriteTexture, &srcRect, &dstRect);
         }
-        //TTF_RenderTextBlended
+
         if (data->isReady) {
-            //std::cout << "Is ready\n";
             SDL_SetRenderDrawColor(renderer, 120, 250, 120, 255);
             SDL_RenderDrawRect(renderer, &dstRect);
         }
@@ -37,17 +29,17 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
 
 	const int frameDelay = 1000 / 60;
 	int frameStart, frameTime;
-    //std::cout << game->getGameData().isReady() << std::endl;
-	//while (!game->getGameData().isReady()) {//while (is_running) {
+
+    // Stay in the lobby until the server says to switch
 	while (!game->getGameData()->isReady()) {
         if (game->shouldForceQuit()) return 0;
-		//std::cout << is_running << std::endl;
 		frameStart = SDL_GetTicks();
+
+        // Let players choose their class with 1, 2, or 3 and ready up with the enter key
         while (SDL_PollEvent(&event)) {
-            //if ((event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) && event.key.repeat == 0) {
             if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
                 switch (event.key.keysym.sym) {
-                case SDLK_1: // Change class debug
+                case SDLK_1:
                     if (event.type == SDL_KEYDOWN) {
                         game->send("CHANGE_CLASS1");
                         game->myPlayer->setPlayerClass(PlayerClasses::KNIGHT);
@@ -66,9 +58,7 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
                     }
                     break;
                 case SDLK_RETURN:
-                    //std::cout << "RETURN\n";
                     if (game->myPlayer->playerClass != PlayerClasses::NONE) {
-                        //std::cout << "THE ROOK\n";
                         game->send("TOGGLE_READY");
                     }
                     break;
@@ -80,9 +70,7 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
                 default:
                     break;
                 }
-            }// else if (event.type == SDL_MOUSEBUTTONDOWN) {
-            //    game->clickInput(event);
-            //}
+            }
 
             if (event.type == SDL_QUIT) {
                 game->send("DISCONNECT");
@@ -100,17 +88,15 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
 
         frameTime = SDL_GetTicks() - frameStart;
         if (frameDelay > frameTime) {
-            //cout << frameTime << endl;
             SDL_Delay(frameDelay - frameTime);
         }
 	}
-    //game->getGameData().setReady(false); // I guess setting it here doesn't work // At least this way of doing it seems to be read-only // I forgot to make getGameData return a pointer, that's why it was read only because changes to that instance didn't go anywhere
+
     game->getGameData()->setReady(false);
     for (int id = 1; id <= game->MAX_PLAYERS; id++) {
-        //PlayerData* data = game->getGameData().playerMap[id];
         PlayerData* data = game->getGameData()->playerMap[id];
         if (data == nullptr) break;
-        data->isReady = false; // TODO - Don't forget to do this serverside too if I really want to make the game loop without closing
+        data->isReady = false;
     }
 	return true;
 }
@@ -126,13 +112,13 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
     SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
     SDL_FreeSurface(textSurface);
     SDL_DestroyTexture(textTexture);
+
     textRect = { 0, 80, 0, 0 };
     if (game->getGameData()->partyWon) {
         text = "Your party defeated the boss in battle!";
     } else {
         text = "Your party was defeated by the boss!";
     }
-
     textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
     textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
     SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
@@ -143,6 +129,7 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
 
     textRect = { 0, 350, 0, 0 };
     SDL_Rect srcRect = { 0, 0, 20, 20 };
+    // Display players and their state
     for (int id = 1; id <= game->MAX_PLAYERS; id++) {
         SDL_Rect dstRect = { 210 + (id - 1) * 100, 260, 80, 80 };
         SDL_SetRenderDrawColor(renderer, 120, 120, 120, 255);
@@ -151,6 +138,9 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
         PlayerGameData* data = &(game->getGameData()->endData[id-1]);
 
         if (!data->slotActive) continue;
+
+        // Dead players are shown laying on the floor with a "DEAD" status
+        // Living players are shown standing up with their health values displayed
         if (data->health == 0) {
             dstRect.x += 2;
             dstRect.y += 10;
@@ -180,6 +170,8 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
             SDL_DestroyTexture(textTexture);
         }
     }
+    // If the party wins, health is totaled up between all players and the % of health remaining is used as a rank
+    // If they all died then there's no point in showing a health rank
     float healthRank = 0; // % Overall health of the party
     if (game->getGameData()->partyWon) {
         textRect = { 0, 400, 0, 0 };
@@ -204,6 +196,8 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
     } else {
         textRect = { 0, 400, 0, 0 };
     }
+
+    // Converting time into a printable format
     int minutes = game->getGameData()->roundDuration / 60;
     int seconds = game->getGameData()->roundDuration % 60;
     std::string tMinutes;
@@ -219,6 +213,9 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
     else {
         tSeconds = std::to_string(seconds);
     }
+
+    // If the party wins, their time taken to win is used to calculate a rank based on how quickly they defeated the boss.
+    // If the party lost, the time shows how long they survived.
     if (game->getGameData()->partyWon) {
         text = "Time: " + tMinutes + ":" + tSeconds;
     }
@@ -232,6 +229,8 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
     SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
     SDL_FreeSurface(textSurface);
     SDL_DestroyTexture(textTexture);
+
+    // Rank conversions and display
     if (game->getGameData()->partyWon) {
         textRect = { 0, 480, 0, 0 };
         text = "Health Rank: ";
@@ -279,6 +278,8 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
         SDL_FreeSurface(textSurface);
         SDL_DestroyTexture(textTexture);
     }
+
+    // Text telling the player how to close the menu
     textRect = { 0, 560, 0, 0 };
     text = "Press any button to continue";
     textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
@@ -293,15 +294,23 @@ void GameEndScreen::render(SDL_Renderer* renderer, MyGame* game) {
 bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
     SDL_Event event;
 
+    // Because nothing can ever change on this screen, technically it only needs to be rendered once
+    // And that's actually a really cool optimisation so I'm doing it
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    render(renderer, game);
+    SDL_RenderPresent(renderer);
+
     const int frameDelay = 1000 / 60;
     int frameStart, frameTime;
     int closeDelay = SDL_GetTicks() + 1500;
-    while (true) {//while (is_running) {
+
+    // Loop the screen until the player presses a button
+    while (true) {
         if (game->shouldForceQuit()) return 0;
-        //std::cout << is_running << std::endl;
         frameStart = SDL_GetTicks();
+
         while (SDL_PollEvent(&event)) {
-            //if ((event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) && event.key.repeat == 0) {
             if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
                 switch (event.key.keysym.sym) {
                 case SDLK_ESCAPE:
@@ -310,7 +319,7 @@ bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
                     return false;
                     break;
                 default:
-                    if (SDL_GetTicks() > closeDelay) { // new - 1.5s delay before you can close the end screen
+                    if (SDL_GetTicks() > closeDelay) { // 1.5s delay before you can close the end screen
                         return true;
                     }
                     break;
@@ -324,22 +333,10 @@ bool GameEndScreen::loop(SDL_Renderer* renderer, MyGame* game) {
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        render(renderer, game);
-
-        SDL_RenderPresent(renderer);
-
         frameTime = SDL_GetTicks() - frameStart;
         if (frameDelay > frameTime) {
-            //cout << frameTime << endl;
             SDL_Delay(frameDelay - frameTime);
         }
     }
 	return true;
 }
-
-//static bool gameLobby(MyGame* game) {}
-
-//static bool gameEndScreen(MyGame* game) {}
