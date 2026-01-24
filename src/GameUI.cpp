@@ -1,5 +1,91 @@
 #include "GameUI.h"
 
+void GameLobby::initRender(SDL_Renderer* renderer, MyGame* game) {
+    SDL_Rect textRect = { 0, 40, 0, 0 };
+    std::string text = "TINY WARRIORS";
+    SDL_Surface* textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    textRect.x = 400 - textRect.w / 2;
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 0, 120, 0, 0 };
+    text = "GAME LOBBY";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    textRect.x = 400 - textRect.w / 2;
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 40, 400, 0, 0 };
+    text = "CONTROLS:";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 40, 420, 0, 0 };
+    text = "ENTER - Ready Up";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 40, 460, 0, 0 };
+    text = "Class Select:";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 40, 480, 0, 0 };
+    text = "1 - Knight";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 40, 500, 0, 0 };
+    text = "2 - Ranger";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 40, 520, 0, 0 };
+    text = "3 - Mage";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+
+    textRect = { 0, 560, 0, 0 };
+    text = "THE GAME BEGINS WHEN EVERYONE IS READY";
+    textSurface = TTF_RenderText_Blended(game->getGameData()->font, text.c_str(), game->getGameData()->defaultFontColor);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_QueryTexture(textTexture, NULL, NULL, &textRect.w, &textRect.h);
+    textRect.x = 400 - textRect.w / 2;
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+}
+
 void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
     SDL_Rect srcRect = { 0, 0, 20, 20 };
     for (int id = 1; id <= game->MAX_PLAYERS; id++) {
@@ -26,6 +112,10 @@ void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
 
 bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
 	SDL_Event event;
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    initRender(renderer, game);
 
 	const int frameDelay = 1000 / 60;
 	int frameStart, frameTime;
@@ -78,9 +168,6 @@ bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
                 return false;
             }
         }
-        
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
 
         render(renderer, game);
 

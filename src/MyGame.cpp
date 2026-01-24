@@ -251,6 +251,13 @@ void MyGame::on_receive(std::string cmd, std::vector<std::string>& args) {
                 delete data;
             }
         }
+        // Delete boss data
+        for (int id = 1; id <= game_data.npcMap.size(); id++) {
+            NPCData* data = game_data.npcMap[id];
+            if (data == nullptr) continue;
+            game_data.npcMap[id] = nullptr;
+            delete data;
+        }
         // Game over data setup
         for (int id = 0; id < MAX_PLAYERS; id++) {
             game_data.endData[id].slotActive = false;

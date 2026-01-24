@@ -4,6 +4,7 @@
 
 class GameLobby {
 	private:
+		void initRender(SDL_Renderer* renderer, MyGame* game);
 		void render(SDL_Renderer* renderer, MyGame* game);
 	public:
 		bool loop(SDL_Renderer* renderer, MyGame* game);
