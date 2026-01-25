@@ -108,7 +108,7 @@ void GameLobby::render(SDL_Renderer* renderer, MyGame* game) {
             SDL_RenderDrawRect(renderer, &dstRect);
         }
     }
-} // TODO - Add text into UI showing player names and controls
+}
 
 bool GameLobby::loop(SDL_Renderer* renderer, MyGame* game) {
 	SDL_Event event;
